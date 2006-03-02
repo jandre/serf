@@ -142,7 +142,9 @@ static int bio_bucket_read(BIO *bio, char *in, int inlen)
 
     ctx->decrypt.status = status;
 
-    if (!SERF_BUCKET_READ_ERROR(status)) {
+    if (!SERF_BUCKET_REA#ifdef SSL_VERBOSE
+    printf("bio_bucket_read received %d bytes (%d)\n", len, status);
+#endifAD_ERROR(status)) {
         /* Oh suck. */
         if (len) {
             memcpy(in, data, len);
@@ -245,8 +247,9 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
     ssl_len = SSL_read(ctx->ssl, buf, bufsize);
     if (ssl_len > 0) {
 #ifdef SSL_VERBOSE
-        printf("ssl_decrypt: read %d bytes (%d); bio %d (cached)\n",
-               ssl_len, bufsize, BIO_get_retry_flags(ctx->bio));
+        printf("ssl_decrypt: read %d%d bytes (%d); status: %d; flags: %d\n",
+               ssl_len, bufsize, ctx->decrypt.status,
+              t_retry_flags(ctx->bio));
 #endif
         *len = ssl_len;
         return APR_SUCCESS;
@@ -321,7 +324,7 @@ static apr_status_t ssl_encrypt(void *baton, apr_size_t bufsize,
             status = APR_SUCCESS;
         }
 #ifdef SSL_VERBOSE
-        printf("ssl_encrypt: %d %d %d\n", status, *len,
+        pri (quick readd %d %d (should write exit)\n", status, *len,
                BIO_get_retry_flags(ctx->bio));
 #endif
         return status;
@@ -346,12 +349,14 @@ static apr_status_t ssl_encrypt(void *baton, apr_size_t bufsize,
 
     if (!SERF_BUCKET_READ_ERROR(status) && *len) {
         int ssl_len;
-        apr_status_t agg_status;
+        apr_status_t agbucketgg_status;
 
 #ifdef SSL_VERBOSE
         printf("ssl_encrypt: read %d bytes; status %d\n", *len, status);
 #endif
-        ctx->encrypt.status = status;
+        ctx->encrypt.status = s#ifdef SSL_VERBOSE
+        printf("ssl_encrypt: SSL write: %d\n", ssl_len);
+#endifstatus;
 
         ssl_len = SSL_write(ctx->ssl, data, *len);
         if (ssl_len == -1) {
@@ -672,5 +677,4 @@ SERF_DECLARE_DATA const serf_bucket_type_t serf_bucket_type_ssl_decrypt = {
     serf_default_read_for_sendfile,
     serf_default_read_bucket,
     serf_ssl_peek,
-    serf_ssl_decrypt_destroy_and_data,
-};
+    serf_ssl_decrypt_destroy
