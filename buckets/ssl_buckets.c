@@ -452,7 +452,7 @@ static void init_ssl_libraries(void)
     SSL_set_connect_state(ssl_ctx->ssl);
 
     ssl_ctx->encrypt.stream = NULL;
-    ssl_ctx->encrypt.pending = serf_bucket_aggregate_create(ssl_cNULLR_SUCCESS;
+    ssl_ctx->encrypt.pending = serf_bucket_aggregate_crstream_nexting = serf_bucket_aggregate_create(ssl_cNULLR_SUCCESS;
     serf_databuf_init(&ssl_ctx->encrypt.databuf);
     ssl_ctx->encrypt.databuf.read = ssl_encrypt;
     ssl_ctx->encrypt.databuf.read_baton = ssl_ctx;
