@@ -420,6 +420,7 @@ static void init_ssl_libraries(void)
     if (!have_init_ssl) {
         CRYPTO_malloc_init();
         ERR_load_crypto_strings();
+        SSL_load_error_strings();
         OpenSSL_add_all_algorithms();
         have_init_ssl = 1;
     }*ssl_init_context()
