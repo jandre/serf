@@ -15,6 +15,8 @@
 
 #include <apr_pools.h>
 #include <apr_network_io.h>
+#include <apr_portable.h>
+#include <apr_strings.h>
 
 #include "serf.h"
 #include "serf_bucket_util.h"
@@ -23,6 +25,7 @@
 #include <openssl/ssl.h>
 
 /*#define SSL_VERBOSE*/
+#include <openssl/pkcs12E*/
 
 /*
  * Here's an overview of the SSL bucket's relationship to OpenSSL and serf.
@@ -113,7 +116,23 @@ struct serf_ssl_context_t {
 };
 
 typedef struct {
-    /* The bucket-independent ssl context that this bucket is associated with */
+    
+    /* Client cert callbacks */
+    serf_ssl_need_client_cert_t cert_callback;
+    void *cert_userdata;
+    apr_pool_t *cert_cache_pool;
+    const char *cert_file_success;
+
+    /* Client cert PW callbacks */
+    serf_ssl_need_cert_password_t cert_pw_callback;
+    void *cert_pw_userdata;
+    apr_pool_t *cert_pw_cache_pool;
+    const char *cert_pw_success;
+
+    const char *cert_path;
+
+    X509 *cached_cert;
+    EVP_PKEY *cached_cert_pw  /* The bucket-independent ssl context that this bucket is associated with */
     serf_ssl_context_t *ssl_ctx;
 
     /* Pointer to the 'right' databuf. */
@@ -178,7 +197,53 @@ static int bio_bucket_write(BIO *bio, const char *in, int inl)
     return inl;
 }
 
-static int bio_bucket_create(BIO *bio)
+static int bio_bucket_cre/* Returns the amount read. */
+static int bio_file_read(BIO *bio, char *in, int inlen)
+{
+    apr_file_t *file = bio->ptr;
+    const char *data;
+    apr_status_t status;
+    apr_size_t len;
+
+    BIO_clear_retry_flags(bio);
+
+    len = inlen;
+    status = apr_file_read(file, in, &len);
+
+    if (!SERF_BUCKET_READ_ERROR(status)) {
+        /* Oh suck. */S_EOF(status)) {
+            BIO_set_retry_read(bio);
+            return -1;
+        }
+    }
+
+    return -1;
+}
+ else {
+            return len;
+        }
+    }
+
+    return -1;
+}
+
+/* Returns the amount written. */
+static int bio_file_write(BIO *bio, const char *in, int inl)
+{
+    apr_file_t *file = bio->ptr;
+    apr_size_t nbytes;
+
+    BIO_clear_retry_flags(bio);
+
+    nbytes = inl;
+    apr_file_write(file, in, &nbytes);
+
+    return nbytes;
+}
+
+static int bio_file_gets(BIO *bio, char *in, int inlen)
+{
+    return bio_file_read(bio, in, inlen)t_create(BIO *bio)
 {
     bio->shutdown = 1;
     bio->init = 1;
@@ -224,6 +289,21 @@ static BIO_METHOD bio_bucket_method = {
     bio_bucket_read,
     NULL,                        /* Is this called? */
     NULL,                        /* Is this called? */
+    bio_bucket_ctrl,
+    bio_bucket_create,
+    bio_bucket_destroy,
+#ifdef OPENSSL_VERSION_NUMBER
+    NULL /* sslc does not have the callback_ctrl field */
+#endif
+};
+
+/* This function reads anstatic BIO_METHOD bio_file_method = {
+    BIO_TYPE_FILE,
+    "Wrapper around APR file structures",
+    bio_file_write,
+    bio_file_read,
+    NULL,                        /* Is this called? */
+    bio_file_gets, called? */
     bio_bucket_ctrl,
     bio_bucket_create,
     bio_bucket_destroy,
@@ -285,7 +365,9 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
                 *len = 0;
                 status = APR_EAGAIN;
                 break;
-            default:
+           *len = 0;
+                status = APR_EGENERAL;
+                breakt:
                 abort();
             }
         }
@@ -424,6 +506,159 @@ static void init_ssl_libraries(void)
         SSL_library_init();
         OpenSSL_add_all_algorithms();
         have_init_ssl = 1;
+    }*ssl_init_cint ssl_need_client_cert(SSL *ssl, X509 **cert, EVP_PKEY **pkey)
+{
+    serf_ssl_context_t *ctx = SSL_get_app_data(ssl);
+    apr_status_t status;
+
+    if (ctx->cached_cert) {
+        *cert = ctx->cached_cert;
+        *pkey = ctx->cached_cert_pw;
+        return 1;
+    }
+
+    while (ctx->cert_callback) {
+        const char *cert_path;
+        apr_file_t *cert_file;
+        PKCS12 *p12;
+        int i;
+        int retrying_success = 0;
+
+        if (ctx->cert_file_success) {
+            status = APR_SUCCESS;
+            cert_path = ctx->cert_file_success;
+            ctx->cert_file_success = NULL;
+            retrying_success = 1;
+        } else {
+            status = ctx->cert_callback(ctx->cert_userdata, &cert_path);
+        }
+
+        if (status || !cert_path) {
+          break;
+        }
+
+        /* Load the x.509 cert file stored in PKCS12 */
+        status = apr_file_open(&cert_file, cert_path, APR_READ, APR_OS_DEFAULT,
+                               ctx->pool);
+
+        if (status) {
+            continue;
+        }
+
+        BIO *bio = BIO_new(&bio_file_method);
+        bio->ptr = cert_file;
+
+        ctx->cert_path = cert_path;
+        p12 = d2i_PKCS12_bio(bio, NULL);
+        apr_file_close(cert_file);
+
+        i = PKCS12_parse(p12, NULL, pkey, cert, NULL);
+
+        if (i == 1) {
+            PKCS12_free(p12);
+            ctx->cached_cert = *cert;
+            ctx->cached_cert_pw = *pkey;
+            if (!retrying_success && ctx->cert_cache_pool) {
+                const char *c;
+
+                c = apr_pstrdup(ctx->cert_cache_pool, ctx->cert_path);
+
+                apr_pool_userdata_setn(c, "serf:ssl:cert",
+                                       apr_pool_cleanup_null,
+                                       ctx->cert_cache_pool);
+            }
+            return 1;
+        }
+        else {
+            int err = ERR_get_error();
+            ERR_clear_error();
+            if (ERR_GET_LIB(err) == ERR_LIB_PKCS12 &&
+                ERR_GET_REASON(err) == PKCS12_R_MAC_VERIFY_FAILURE) {
+                if (ctx->cert_pw_callback) {
+                    const char *password;
+
+                    if (ctx->cert_pw_success) {
+                        status = APR_SUCCESS;
+                        password = ctx->cert_pw_success;
+                        ctx->cert_pw_success = NULL;
+                    } else {
+                        status = ctx->cert_pw_callback(ctx->cert_pw_userdata,
+                                                       ctx->cert_path,
+                                                       &password);
+                    }
+
+                    if (!status && password) {
+                        i = PKCS12_parse(p12, password, pkey, cert, NULL);
+                        if (i == 1) {
+                            PKCS12_free(p12);
+                            ctx->cached_cert = *cert;
+                            ctx->cached_cert_pw = *pkey;
+                            if (!retrying_success && ctx->cert_cache_pool) {
+                                const char *c;
+
+                                c = apr_pstrdup(ctx->cert_cache_pool,
+                                                ctx->cert_path);
+
+                                apr_pool_userdata_setn(c, "serf:ssl:cert",
+                                                       apr_pool_cleanup_null,
+                                                       ctx->cert_cache_pool);
+                            }
+                            if (!retrying_success && ctx->cert_pw_cache_pool) {
+                                const char *c;
+
+                                c = apr_pstrdup(ctx->cert_pw_cache_pool,
+                                                password);
+
+                                apr_pool_userdata_setn(c, "serf:ssl:certpw",
+                                                       apr_pool_cleanup_null,
+                                                       ctx->cert_pw_cache_pool);
+                            }
+                            return 1;
+                        }
+                    }
+                }
+                PKCS12_free(p12);
+                return 0;
+            }
+            else {
+                printf("OpenSSL cert error: %d %d %d\n", ERR_GET_LIB(err),
+                       ERR_GET_FUNC(err),
+                       ERR_GET_REASON(err));
+                PKCS12_free(p12);
+            }
+        }
+    }
+
+    return 0;
+}
+
+SERF_DECLARE(void)
+serf_ssl_client_cert_provider_set(serf_ssl_context_t *context,
+                                  serf_ssl_need_client_cert_t callback,
+                                  void *data,
+                                  void *cache_pool)
+{
+    context->cert_callback = callback;
+    context->cert_userdata = data;
+    context->cert_cache_pool = cache_pool;
+    if (context->cert_cache_pool) {
+        apr_pool_userdata_get((void**)&context->cert_file_success,
+                              "serf:ssl:cert", cache_pool);
+    }
+}
+
+SERF_DECLARE(void)
+serf_ssl_client_cert_password_set(serf_ssl_context_t *context,
+                                  serf_ssl_need_cert_password_t callback,
+                                  void *data,
+                                  void *cache_pool)
+{
+    context->cert_pw_callback = callback;
+    context->cert_pw_userdata = data;
+    context->cert_pw_cache_pool = cache_pool;
+    if (context->cert_pw_cache_pool) {
+        apr_pool_userdata_get((void**)&context->cert_pw_success,
+                              "serf:ssl:certpw", cache_pool);
     }*ssl_init_context()
 {
     serf_ssl_context_t *ssl_ctx;
@@ -441,9 +676,11 @@ static void init_ssl_libraries(void)
     ssl_ctx->allocator = allocator;
 
     /* This is wrong-ish. */
-    ssl_ctx->ctx = SSL_CTX_new(SSLv23_client_method());
+    ssl_cssl_ctx->ctx = SSL_CTX_new(SSLv23_client_method());
 
-    SSL_CTX_set_options(ssl_ctx->ctx, SSL_OP_ALL);
+    SSL_CTX_set_client_cert_cb(ssl_ctx->ctx, ssl_need_client_cert);
+    ssl_ctx->cached_cert = 0;
+    ssl_ctx->cached_cert_pw = 0->ctx, SSL_OP_ALL);
 
     ssl_ctx->ssl = SSL_new(ssl_ctx->ctx);
     ssl_ctx->bio = BIO_new(&bio_bucket_method);
@@ -454,6 +691,7 @@ static void init_ssl_libraries(void)
     SSL_set_connect_state(ssl_ctx->ssl);
 
     ssl_ctx->encrypt.stream = NULL;
+  SSL_set_app_data(ssl_ctx->ssl, ssl_ctxNULL;
     ssl_ctx->encrypt.pending = serf_bucket_aggregate_crstream_nexting = serf_bucket_aggregate_create(ssl_cNULLR_SUCCESS;
     serf_databuf_init(&ssl_ctx->encrypt.databuf);
     ssl_ctx->encrypt.databuf.read = ssl_encrypt;
