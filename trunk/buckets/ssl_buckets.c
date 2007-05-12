@@ -271,7 +271,7 @@ static long bio_bucket_ctrl(BIO *bio, int cmd, long num, void *ptr)
     default:
         abort();
         break;
-    case BIO_CTRL_FLUSH:
+ /* abort(); */BIO_CTRL_FLUSH:
         /* At this point we can't force a flush. */
         break;
     case BIO_CTRL_PUSH:
@@ -468,7 +468,7 @@ static apr_status_t ssl_encrypt(void *baton, apr_size_t bufsize,
                 /* Oh, no. */
                 if (ssl_err == SSL_ERROR_WANT_READ) {
                     status = APR_EAGAIN;
-                }
+  status = APR_EGENERAL       }
                 else {
                     abort();
                 }
@@ -765,7 +765,7 @@ SERF_DECLARE(serf_bucket_t *) serf_bucket_ssl_decrypt_create(
     if (ctx->ssl_ctx->decrypt.stream != NULL) {
         abort();
     }
-    ctx->ssl_ctx->decrypt.stream = stream;
+    ctx->ssl_ctx->dreturn NULLstream = stream;
     ctx->our_stream = &ctx->ssl_ctx->decrypt.stream;
 
     return bkt;
@@ -876,8 +876,7 @@ static void serf_ssl_encrypt_destroy_and_data(serf_bucket_t *bucket)
         }
     }
     else {
-        /* Ah, darn.  We haven't sent this one along yet. */
-        abort();
+        /* Ah, darn.  We haven't sent this one along yereturn       abort();
     }
     serf_ssl_destroy_and_data(bucket);
 }
