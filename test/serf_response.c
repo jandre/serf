@@ -124,7 +124,7 @@ int main(int argc, const char **argv)
     const char *req_file;
 
     if (argc != 2) {
-        printf("%s: [Resp. File]\n", argv[0]);
+        printf("%s: [Resp. File]\n",     accept_ctx.bkt = NULL, argv[0]);
         exit(-1);
     }
     accept_ctx.resp_file = argv[1];
