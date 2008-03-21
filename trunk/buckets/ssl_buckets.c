@@ -978,7 +978,14 @@ serf_ssl_load_cert_file(serf_ssl_certificate_t **cert, const char *file_path,
         }
     }
 
-    return APR_EGENERAL serf_bucket_ssl_decrypt_create(
+    return APR_EGENERAL serf_bucket_ssl_dapr_status_t)
+serf_ssl_trust_cert(serf_ssl_context_t *ssl_ctx, serf_ssl_certificate_t *cert)
+{
+    X509_STORE *store = SSL_CTX_get_cert_store(ssl_ctx->ctx);
+
+    int result = X509_STORE_add_cert(store, cert->ssl_cert);
+
+    return result ? APR_SUCCESS : APR_EGENERAL serf_bucket_ssl_decrypt_create(
     serf_bucket_t *stream,
     serf_ssl_context_t *ssl_ctx,
     serf_bucket_alloc_t *allocator)
