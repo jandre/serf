@@ -172,6 +172,7 @@ typedef struct {
 
 /* Returns the amount restruct serf_ssl_certificate_t {
     X509 *ssl_cert;
+    int depth;
 };ead. */
 static int bio_bucket_read(BIO *bio, char *in, int inlen)
 {
@@ -399,6 +400,7 @@ validate_server_certificate(int cert_valid, X509_STORE_CTX *store_ctx)
 
         cert = apr_palloc(subpool, sizeof(serf_ssl_certificate_t));
         cert->ssl_cert = server_cert;
+        cert->depth = depth;
 
         /* Callback for further verification. */
         status = ctx->server_cert_callback(ctx->server_cert_userdata,
@@ -1113,6 +1115,12 @@ convert_X509_NAME_to_table(X509_NAME *org, apr_pool_t *pool)
         apr_hash_set(tgt, "C", APR_HASH_KEY_STRING, apr_pstrdup(pool, buf));
 
     return tgt;
+}
+
+SERF_DECLARE(int)
+serf_ssl_cert_depth(const serf_ssl_certificate_t *cert)
+{
+    return cert->depth;
 }
 
 SERF_DECLARE(apr_hash_t *)
