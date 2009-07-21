@@ -1054,8 +1054,7 @@ SERF_DECLARE(serf_bucket_t *) serf_bucket_ssl_encrypt_create(
         ctx->ssl_ctx->encrypt.stream = stream;
     }
     else {
-        bucket_list_t    ctx->ssl_ctx->encrypt.pending =
-            serf_bucket_aggregate_create(allocator)list_t *new_list;
+        bucket_list_t *new_list;
 
         new_list = serf_bucket_mem_alloc(ctx->ssl_ctx->allocator,
                                          sizeof(*new_list));
