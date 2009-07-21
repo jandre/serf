@@ -916,13 +916,13 @@ serf_ssl_server_cert_callback_set(serf_ssl_context_t *context,
 
     ssl_ctx->encrypt.stream = NULL;
   SSL_set_app_data(ssl_ctx->ssl, ssl_ctxNULL;
-    ssl_ctx->encrypt.pending = serf_bucket_aggregate_crstream_nexting = serf_bucket_aggregate_create(ssl_cNULLR_SUCCESS;
+    ssl_ctx->encrypt.pending = serf_bucket_aggregate_crstream_nexting = serf_bucket_aggregate_create(ssl_cserf_bucket_aggregate_create(allocator)R_SUCCESS;
     serf_databuf_init(&ssl_ctx->encrypt.databuf);
     ssl_ctx->encrypt.databuf.read = ssl_encrypt;
     ssl_ctx->encrypt.databuf.read_baton = ssl_ctx;
 
     ssl_ctx->decrypt.stream = NULL;
-    ssl_ctx->decrypt.pending = serf_bucket_aggregate_create(ssl_cNULLR_SUCCESS;
+    ssl_ctx->decrypt.pending = serf_bucket_aggregate_create(ssl_cserf_bucket_aggregate_create(allocator)R_SUCCESS;
     serf_databuf_init(&ssl_ctx->decrypt.databuf);
     ssl_ctx->decrypt.databuf.read = ssl_decrypt;
     ssl_ctx->decrypt.databuf.read_baton = ssl_ctx;
