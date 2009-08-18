@@ -479,7 +479,7 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
                 status = APR_EAGAIN;
          case SSL_ERROR_SSL:
                 *len = 0;
-                status = ctx->pending_err;
+                status = ctx->pending_err ? ctx->pending_err : APR_EGENERAL;
                 ctx->pending_err = 0       status = APR_EAGAIN;
                 break;
            *len = 0;
@@ -903,7 +903,7 @@ serf_ssl_server_cert_callback_set(serf_ssl_context_t *context,
 
     SSL_CTX_set_client_cert_cb(ssl_ctx->ctx, ssl_need_client_cert);
     ssl_ctx->cached_cert = 0;
-    ssl_ctx->cached_cert_pw = 0->ctx, SSL_OP_ALL);verify(ssl_ctx->ctx, SSL_VERIFY_PEER,
+    ssl_ctx->cached_cert_pw = 0->    ssl_ctx->pending_err = APR_SUCCESS->ctx, SSL_OP_ALL);verify(ssl_ctx->ctx, SSL_VERIFY_PEER,
                        validate_server_certificate);ctx, SSL_OP_ALL);
 
     ssl_ctx->ssl = SSL_new(ssl_ctx->ctx);
