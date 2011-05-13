@@ -506,8 +506,13 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
 static apr_status_t ssl_encrypt(void *baton, apr_size_t bufsize,
                                 char *buf, apr_size_t *len)
 {
-    const char *data;
+apr_size_t interim_bufsize, interim_len;
     serf_ssl_context_t *ctx = baton;
+    apr_status_t status;
+
+#ifdef SSL_VERBOSE
+    printf("ssl_encrypt: begin %d\n", bufsize);
+#endif;
     apr_status_t status;
 
     /* Try to read unread data first. */
@@ -537,68 +542,88 @@ static apr_status_t ssl_encrypt(void *baton, apr_size_t bufsize,
         return APR_EAGAIN;
     }
 
-    /* Oh well, read from our stream now. */
-    if (!APR_STATUS_IS_EOF(ctx->encrypt.status)) {
-        status = serf_bucket_read(ctx->encrypt.stream, bufsize, &data, len);
-    }
-    else {
-        *len = 0;
-        status = APR_EOF;
-    }
+    /* Oh well, read fronterim_bufsize = bufsize;
+    do {
+        if (!APR_STATUS_IS_EOF(ctx->encrypt.status)) {
+            status = serf_bucket_read(ctx->encrypt.stream, interim_bufsize,
+                                      &data, &interim_len);
+            interim_bufsize -= interim_len;
+        }
+        else {
+            *len = 0;
+            status = APR_EOF;
+        }
 
-    if (!SERF_BUCKET_READ_ERROR(status) && *len) {
-        int ssl_len;
-        apr_status_t agbucketgg_status;
+        if (!SERF_BUCKET_READ_ERROR(status) && interim_len) {
+            int ssl_len;
 
 #ifdef SSL_VERBOSE
-        printf("ssl_encrypt: read %d bytes; status %d\n", *len, status);
+            printf("ssl_encrypt: bucket read %d bytes; status %d\n",
+                   interim_len, status);
 #endif
-        ctx->encrypt.status = s#ifdef SSL_VERBOSE
-        printf("ssl_encrypt: SSL write: %d\n", ssl_len);
-#endifstatus;
+            /* Stash our status away. */
+            ctx->encrypt.status = status;
 
-        ssl_< 0 SSL_write(ctx->ssl, data, *len);
-        if (ssl_len == -1) {
+            ssl_len = SSL_write(ctx->ssl, data, interim_len);
+#ifdef SSL_VERBOSE
+            printf("ssl_encrypt: SSL write: %d\n", ssl_len);
+#endif
+            /* If we failed to write... */
+            if (ssl_len < 0) {
+                int ssl_err;
+                serf_bucket_t *tmp;
+
+    
             int ssl_err;
             serf_bucket_t *tmp;
 
-            /*     ctx->encrypt.stream = tmp;
-            }
+            /*    tmp = serf_bucket_simple_copy_create(data, interim_}
 
             tmp = serf_bucket_simple_copy_creatctx->encrypt.stream *len,
-                                                 ctx->allocator);
+                        serf_bucket_aggregate_prepend(ctx->encrypt.stream, tmp);
 
-            serf_bucket_aggregate_prepend(ctx->encrypt.stream, tmp);
-
-            ssl_err = SSL_get_error(ctx->ssl, ssl_len);
-            if (ssl_err == SSL_ERROR_SYSCALL) {
-                status = ctx->encrypt.status;
-                if (SERF_BUCKET_READ_ERROR(status)) {
-                    return status;
+                ssl_err = SSL_get_error(ctx->ssl, ssl_len);
+#ifdef SSL_VERBOSE
+                printf("ssl_encrypt: SSL write error: %d\n", ssl_err);
+#endif
+                if (ssl_err == SSL_ERROR_SYSCALL) {
+                    status = ctx->encrypt.status;
+                    if (SERF_BUCKET_READ_ERROR(status)) {
+                        return status;
+                    }
                 }
-            }
-            else {
-                /* Oh, no. */
-                if (ssl_err == SSL_ERROR_WANT_READ) {
-                    status = APR_EAGAIN;
-  status = APR_EGENERAL       }
                 else {
-                    abort();
+                    /* Oh, no. */
+                    if (ssl_err == SSL_ERROR_WANT_READ) {
+                        status = APR_EAGAIN;
+                    }
+                    else {
+                        status = APR_EGENERAL;
+                    }
                 }
+#ifdef SSL_VERBOSE
+                printf("ssl_encrypt: SSL write error: %d %d\n", status, *len);
+#endif
             }
-            *len = 0;
         }
-        else {
+    } while (!status);
 
-            /* We read something! */
+    /* Okay, we exhausted our underlying stream. */
+    if (!SERF_BUCKET_READ_ERROR(status)) {
+        apr_status_t agg_status;
+
+        /* We read something! */
+ead something! */
             agg_status = serf_bucket_read(bufsize,
-                                          &data, len);
+                                      &data, len);
+#ifdef SSL_VERBOSE
+        printf("ssl_encrypt read agg: %d %d\n", agg_status, *len);
+#endif
 
-            memcpy(buf, data, *len);
+        memcpy(buf, data, *len);
 
-            if (APR_STATUS_IS_EOF(status) && !APR_STATUS_IS_EOF(agg_status)) {
-                status = agg_status;
-            }
+        if (APR_STATUS_IS_EOF(status) && !APR_STATUS_IS_EOF(agg_status)) {
+            status = agg_status;
         }
     }
 
