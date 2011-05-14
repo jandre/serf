@@ -544,14 +544,15 @@ apr_size_t interim_bufsize, interim_len;
 
     /* Oh well, read fronterim_bufsize = bufsize;
     do {
-        if (!APR_STATUS_IS_EOF(ctx->encrypt.status)) {
+        if (!ctx->encrypt.status) {
             status = serf_bucket_read(ctx->encrypt.stream, interim_bufsize,
                                       &data, &interim_len);
             interim_bufsize -= interim_len;
         }
         else {
+            interim_len = 0;
             *len = 0;
-            status = APR_EOF;
+            status = ctx->encrypt.status;
         }
 
         if (!SERF_BUCKET_READ_ERROR(status) && interim_len) {
@@ -560,6 +561,7 @@ apr_size_t interim_bufsize, interim_len;
 #ifdef SSL_VERBOSE
             printf("ssl_encrypt: bucket read %d bytes; status %d\n",
                    interim_len, status);
+            printf("---\n%s\n---\n", data, interim_len);
 #endif
             /* Stash our status away. */
             ctx->encrypt.status = status;
@@ -617,18 +619,19 @@ ead something! */
             agg_status = serf_bucket_read(bufsize,
                                       &data, len);
 #ifdef SSL_VERBOSE
-        printf("ssl_encrypt read agg: %d %d\n", agg_status, *len);
+        printf("ssl_encrypt read agg: %d %d %d\n", status, agg_status, *len);
 #endif
 
         memcpy(buf, data, *len);
 
-        if (APR_STATUS_IS_EOF(status) && !APR_STATUS_IS_EOF(agg_status)) {
+        if (!agg_status) {
             status = agg_status;
         }
     }
 
 #ifdef SSL_VERBOSE
-    printf("ssl_encrypt finished          BIO_get_retry_flags(ctx->bio));
+    printf("ssl_encrypt finished: %d %d (%d %d %d)\n", status, *len,
+           BIO_should_retry(ctx->bio), BIO_should_read(ctx->bio)gs(ctx->bio));
 #endif
     return status;
 }
