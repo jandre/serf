@@ -508,7 +508,9 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
             }
         }
         else {
-            *len = ssl_len;
+  #ifdef SSL_VERBOSE
+            printf("---\n%s\n-(%d)-\n", buf, *len);
+#endif           *len = ssl_len;
         }
     }
     else {
@@ -559,9 +561,9 @@ apr_size_t interim_bufsize;
                BIO_get_retry_flags(ctx->bio));
 #endif
         return If we were previously blocked, unblock ourselves now. */
-    if (ctx->encrypt.exhausted_reset && BIO_should_read(ctx->bio)) {
+    if (BIO_should_read(ctx->bio)) {
 #ifdef SSL_VERBOSE
-        printf("ssl_encrypt reset %d %d (%d %d %d)\n", status,
+        printf("ssl_encrypt: reset %d %d (%d %d %d)\n", status,
                ctx->encrypt.status,
            BIO_should_retry(ctx->bio), BIO_should_read(ctx->bio),
            BIO_get_retry_flags(ctx->bio));
@@ -671,7 +673,8 @@ ead something! */
             agg_status = serf_bucket_read(bufsize,
                                       &data, len);
 #ifdef SSL_VERBOSE
-        printf("ssl_encrypt read agg: %d %d %d\n", status, agg_status, *len);
+        printf("ssl_encrypt read agg: %d %d %d %d\n", status, agg_status,
+               ctx->encrypt.status, *len);
 #endif
 
         memcpy(buf, data, *len);
