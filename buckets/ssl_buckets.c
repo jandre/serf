@@ -625,7 +625,6 @@ apr_size_t interim_bufsize;
                 /* If we failed to write... */
                 if (ssl_len < 0) {
                     int ssl_err;
-                    serf_bucket_t *tmp;
 
                     /* Ah, bugger. We need to put that data back. */
                     serf_bucket_aggregate_prepend_iovec(ctx->encrypt.stream,
@@ -1316,9 +1315,10 @@ const char *serf_ssl_cert_export(
     const serf_ssl_certificate_t *cert,
     apr_pool_t *pool)
 {
-    char *binary_cert, *p;
+    char *binary_cert;
     char *encoded_cert;
     int len;
+    unsigned char *unused;
 
     /* find the length of the DER encoding. */
     len = i2d_X509(cert->ssl_cert, NULL);
@@ -1327,8 +1327,8 @@ const char *serf_ssl_cert_export(
     }
 
     binary_cert = apr_palloc(pool, len);
-    p = binary_cert;
-    len = i2d_X509(cert->ssl_cert, &p); /* p is incremented */
+    unused = (unsigned char *)binary_cert;
+    len = i2d_X509(cert->ssl_cert, &unused);  /* unused is incremented  */
     if (len < 0) {
         return NULL;
     }
