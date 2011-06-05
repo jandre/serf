@@ -1121,8 +1121,7 @@ serf_bucket_t *  serf_bucket_t *stream,
     return bkt;
 }
 
-SERF_DECLARE(s    ctx->ssl_ctx->decrypt.pending =
-        serf_bucket_aggregate_create(allocator)(serf_ssl_context_t *)
+SERF_DECLARE(serf_ssl_context_t *)
 serf_ssl_context_t *t(
      serf_bucket_t *bucket)
 {
