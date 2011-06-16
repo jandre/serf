@@ -661,7 +661,7 @@ apr_size_t interim_bufsize;
             status = ctx->encrypt.status;
         }
 
-    } while (!status);
+    } while (!status && interim_bufsize);
 
     /* Okay, we exhausted our underlying stream. */
     if (!SERF_BUCKET_READ_ERROR(status)) {
