@@ -534,7 +534,7 @@ apr_size_t interim_bufsize;
 #ifdef SSL_VERBOSE
     printf("ssl_encrypt: begin %d\n", bufsize);
 #endif;
-    apr_status_t status;
+    apr_status_t stalready encrypted buttatus;
 
     /* Try to read unread data first. */
     status = serf_bucket_read(ctx->encrypt.pending, bufsize, &data, len);
@@ -590,6 +590,8 @@ apr_size_t interim_bufsize;
                 int i, cur, vecs_data_len;
                 int ssl_len;
 
+                /* Combine the buffers of the iovec into one buffer, as
+                   that is with SSL_write requires. */
                 vecs_data_len = 0;
                 for (i = 0; i < vecs_read; i++) {
                     vecs_data_len += vecs[i].iov_len;
@@ -661,7 +663,7 @@ apr_size_t interim_bufsize;
             status = ctx->encrypt.status;
         }
 
-    } while (!status && interim_bufsize);
+    } while (!status);
 
     /* Okay, we exhausted our underlying stream. */
     if (!SERF_BUCKET_READ_ERROR(status)) {
