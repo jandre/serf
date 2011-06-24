@@ -1424,9 +1424,7 @@ static apr_status_t serf_ssl_peek(serf_bucket_t *bucket,
     serf_default_read_for_sendfile,
     serf_default_read_bucket,
     serf_ssl_peek,
-    serf_ssl_encrypt_dest    serf_default_snapshot,
-    serf_default_restore_snapshot,
-    serf_default_is_snapshot_setstroy__DECLARE_DATA const serf_bucket_type_t serf_bucket_type_ssl_decrypt = {
+    serf_ssl_encrypt_destroy__DECLARE_DATA const serf_bucket_type_t serf_bucket_type_ssl_decrypt = {
     "SSLDECRYPT",
     serf_ssl_read,
     serf_ssl_readline,
@@ -1434,7 +1432,4 @@ static apr_status_t serf_ssl_peek(serf_bucket_t *bucket,
     serf_default_read_for_sendfile,
     serf_default_read_bucket,
     serf_ssl_peek,
-    serf_ssl_decrypt_dest    serf_default_snapshot,
-    serf_default_restore_snapshot,
-    serf_default_is_snapshot_set,
-};
+    serf_ssl_decrypt_dest};
