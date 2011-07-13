@@ -60,6 +60,11 @@
                (patch) <= APR_PATCH_VERSION))
 #endif /* APR_VERSION_AT_LEAST */
 
+#ifndef APR_ARRAY_PUSH
+#define APR_ARRAY_PUSH(ary,type) (*((type *)apr_array_push(ary)))
+#endif
+
+
 /*
  * Here's an overview of the SSL bucket's relationship to OpenSSL and serf.
  *
