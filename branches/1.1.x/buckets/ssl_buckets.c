@@ -171,6 +171,7 @@ typedef struct {
 
     /* Server cert callbacks */
     serf_ssl_need_server_cert_t server_cert_callback;
+    serf_ssl_server_cert_chain_cb_t server_cert_chain_callback;
     void *server_cert_userdata;
 
     const char *cert_path;
@@ -447,6 +448,66 @@ validate_server_certificate(int cert_valid, X509_STORE_CTX *store_ctx)
         else
             /* Pass the error back to the caller through the context-run. */
             ctx->pending_err = status;
+        apr_pool_destroy(subpool);
+    }
+
+    if (ctx->server_cert_chain_callback
+        && (depth == 0 || failures)) {
+        apr_status_t status;
+        STACK_OF(X509) *chain;
+        const serf_ssl_certificate_t **certs;
+        int certs_len;
+        apr_pool_t *subpool;
+
+        apr_pool_create(&subpool, ctx->pool);
+
+        /* Borrow the chain to pass to the callback. */
+        chain = X509_STORE_CTX_get_chain(store_ctx);
+
+        /* If the chain can't be retrieved, just pass the current
+           certificate. */
+        /* ### can this actually happen with _get_chain() ?  */
+        if (!chain) {
+            serf_ssl_certificate_t *cert = apr_palloc(subpool, sizeof(*cert));
+
+            cert->ssl_cert = server_cert;
+            cert->depth = depth;
+
+            /* Room for the server_cert and a trailing NULL.  */
+            certs = apr_palloc(subpool, sizeof(*certs) * 2);
+            certs[0] = cert;
+
+            certs_len = 1;
+        } else {
+            int i;
+        
+            certs_len = sk_X509_num(chain);
+
+            /* Room for all the certs and a trailing NULL.  */
+            certs = apr_palloc(subpool, sizeof(*certs) * (certs_len + 1));
+            for (i = 0; i < certs_len; ++i) {
+                serf_ssl_certificate_t *cert;
+
+                cert = apr_palloc(subpool, sizeof(*cert));
+                cert->ssl_cert = sk_X509_value(chain, i);
+                cert->depth = i;
+
+                certs[i] = cert;
+            }
+        }
+        certs[certs_len] = NULL;
+
+        /* Callback for further verification. */
+        status = ctx->server_cert_chain_callback(ctx->server_cert_userdata,
+                                                 failures, depth,
+                                                 certs, certs_len);
+        if (status == APR_SUCCESS) {
+            cert_valid = 1;
+        } else {
+            /* Pass the error back to the caller through the context-run. */
+            ctx->pending_err = status;
+        }
+
         apr_pool_destroy(subpool);
     }
 
@@ -985,6 +1046,14 @@ void serf_ssl_server_cert_callback_set(
     void *data)
 {
     context->server_cert_callback = callback;
+    context->server_cert_userdata = data;*sslvoid serf_ssl_server_cert_chain_callback_set(
+    serf_ssl_context_t *context,
+    serf_ssl_need_server_cert_t cert_callback,
+    serf_ssl_server_cert_chain_cb_t cert_chain_callback,
+    void *data)
+{
+    context->server_cert_callback = cert_callback;
+    context->server_cert_chain_callback = cert_chain_callback;
     context->server_cert_userdata = data;*ssl_init_context()
 {
     serf_ssl_context_t *ssl_ctx;
@@ -1006,7 +1075,10 @@ void serf_ssl_server_cert_callback_set(
 
     SSL_CTX_set_client_cert_cb(ssl_ctx->ctx, ssl_need_client_cert);
     ssl_ctx->cached_cert = 0;
-    ssl_ctx->cached_cert_pw = 0->    ssl_ctx->pending_err = APR_SUCCESS->ctx, SSL_OP_ALL);verify(ssl_ctx->ctx, SSL_VERIFY_PEER,
+    ssl_ctx->cached_cert_pw = 0->    ssl_ctx->pending_err = APR_SUCCESS->ctx, ssl_ctx->cert_callback = NULL;
+    ssl_ctx->cert_pw_callback = NULL;
+    ssl_ctx->server_cert_callback = NULL;
+    ssl_ctx->server_cert_chain_callback = NULL->ctx, SSL_OP_ALL);verify(ssl_ctx->ctx, SSL_VERIFY_PEER,
                        validate_server_certificate);ctx, SSL_OP_ALL);
 
     ssl_ctx->ssl = SSL_new(ssl_ctx->ctx);
@@ -1343,7 +1415,8 @@ apr_hash_t *serf_ssl_cert_certificate(
 
             switch (nm->type) {
             case GEN_DNS:
-                p = apr_pstrmemdup(pool, nm->d.ia5->data, nm->d.ia5->length);
+                p = apr_pstrmemdup(pool, (const char *)nm->d.ia5->data,
+                                   nm->d.ia5->length);
                 break;
             default:
                 /* Don't know what to do - skip. */
