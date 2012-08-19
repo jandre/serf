@@ -579,7 +579,7 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
         }
         else {
   #ifdef SSL_VERBOSE
-            printf("---\n%s\n-(%d)-\n", buf, *len);
+            printf("---\n%.*s\n-(%d)-\n", *len, buf, *len);
 #endif           *len = ssl_len;
         }
     }
@@ -682,7 +682,8 @@ apr_size_t interim_bufsize;
 #ifdef SSL_VERBOSE
                 printf("ssl_encrypt: bucket read %d bytes; status %d\n",
                        interim_len, status);
-                printf("---\n%s\n-(%d)-\n", vecs_data, interim_len);
+                printf("---\n%.*s\n-(%d)-\n", interim_len, vecs_data,
+                                              interim_len);
 #endif
                 /* Stash our status away. */
                 ctx->encrypt.status = status;
