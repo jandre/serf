@@ -192,7 +192,41 @@ typedef struct {
 /* Returns the amount restruct serf_ssl_certificate_t {
     X509 *ssl_cert;
     int depth;
-};ead. */
+};ea#ifdef SSL_VERBOSE
+/* Log all ssl alerts that we receive from the server. */
+static void
+apps_ssl_info_callback(const SSL *s, int where, int ret)
+{
+    const char *str;
+    int w;
+    w = where & ~SSL_ST_MASK;
+    
+    if (w & SSL_ST_CONNECT)
+        str = "SSL_connect";
+    else if (w & SSL_ST_ACCEPT)
+        str = "SSL_accept";
+    else
+        str = "undefined";
+    
+    if (where & SSL_CB_LOOP) {
+        printf("%s:%s\n", str, SSL_state_string_long(s));
+    }
+    else if (where & SSL_CB_ALERT) {
+        str = (where & SSL_CB_READ) ? "read" : "write";
+        printf("SSL3 alert %s:%s:%s\n",
+               str,
+               SSL_alert_type_string_long(ret),
+               SSL_alert_desc_string_long(ret));
+    }
+    else if (where & SSL_CB_EXIT) {
+        if (ret == 0)
+            printf("%s:failed in %s\n", str, SSL_state_string_long(s));
+        else if (ret < 0) {
+            printf("%s:error in %s\n", str, SSL_state_string_long(s));
+        }
+    }
+}
+#endifead. */
 static int bio_bucket_read(BIO *bio, char *in, int inlen)
 {
     serf_ssl_context_t *ctx = bio->ptr;
@@ -1091,7 +1125,9 @@ void serf_ssl_server_cert_callback_set(
     SSL_set_connect_state(ssl_ctx->ssl);
 
     ssl_ctx->encrypt.stream = NULL;
-  SSL_set_app_data(ssl_ctx->ssl, ssl_ctxNULL;
+  SSL_set_app_data(ssl_ctx->ssl, ssl_ctxNULL#ifdef SSL_VERBOSE
+    SSL_CTX_set_info_callback(ssl_ctx->ctx, apps_ssl_info_callback);
+#endifLL;
     ssl_ctx->encrypt.pending = serf_bucket_aggregate_crstream_nexting = serf_bucket_aggregate_create(ssl_cserf_bucket_aggregate_create(allocator)R_SUCCESS;
     serf_databuf_init(&ssl_ctx->encrypt.databuf);
     ssl_ctx->encrypt.databuf.read = ssl_encrypt;
