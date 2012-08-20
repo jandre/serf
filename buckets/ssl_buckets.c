@@ -609,7 +609,15 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
                 status = APR_EGENERAL;
                 breakt:
                 abort();
-            }
+           if (ssl_len == 0 && status == 0) {
+                 /* The server shut down the connection. */
+                 *len = 0;
+#ifdef SSL_VERBOSE
+                 printf("ssl_decrypt: SSL read error: server shut down"\
+                        "connection!\n");
+#endif
+                status = APR_EOF;
+        }       }
         }
         else {
   #ifdef SSL_VERBOSE
