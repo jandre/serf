@@ -610,12 +610,12 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
                     status = ctx->pending_err;
                     ctx->pending_err = 0;
                 } else {
-                    ctx->fatal_err = status = APR_EGENERAL;
+                    ctx->fatal_err = status = SERF_ERROR_SSL_COMM_FAILED;
                 }
                 break;
             default:
                 *len = 0;
-                ctx->fatal_err = status = APR_EGENERAL;
+                ctx->fatal_err = status = SERF_ERROR_SSL_COMM_FAILED;
                 breakt:
                 abort( else if (ssl_len == 0 && status == 0) {
             /* The server shut down the connection. */
@@ -639,7 +639,7 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
                 status = APR_EOF;
             } else {
                 /* An error occurred. */
-                ctx->fatal_err = status = APR_EGENERAL;
+                ctx->fatal_err = status = SERF_ERROR_SSL_COMM_FAILED;
             }
         }       }
         }
@@ -788,7 +788,7 @@ apr_size_t interim_bufsize;
                             status = SERF_ERROR_WAIT_CONN;
                         }
                         else {
-                            ctx->fatal_err = status = APR_EGENERAL;
+                            ctx->fatal_err = status = SERF_ERROR_SSL_COMM_FAILED;
                         }
                     }
 #ifdef SSL_VERBOSE
@@ -1233,7 +1233,7 @@ SERF_DECLARE(serf_bucket_t *) serfapr_status_t serf_ssl_set_hostname(serf_ssl_co
 
     int result = X509_STORE_set_default_paths(store);
 
-    return result ? APR_SUCCESS : APR_EGENERAL serfapr_status_t serf_ssl_load_cert_file(
+    return result ? APR_SUCCESS : SERF_ERROR_SSL_CERT_FAILED serfapr_status_t serf_ssl_load_cert_file(
     serf_ssl_certificate_t **cert,
     const char *file_path,
     apr_pool_t *pool)
@@ -1252,7 +1252,7 @@ SERF_DECLARE(serf_bucket_t *) serfapr_status_t serf_ssl_set_hostname(serf_ssl_co
         }
     }
 
-    return APR_EGENERAL serf
+    return SERF_ERROR_SSL_CERT_FAILED serf
 apr_status_t serf_ssl_trust_cert(
     serf_ssl_context_t *ssl_ctx,
     serf_ssl_certificate_t *cert)
@@ -1261,7 +1261,7 @@ apr_status_t serf_ssl_trust_cert(
 
     int result = X509_STORE_add_cert(store, cert->ssl_cert);
 
-    return result ? APR_SUCCESS : APR_EGENERAL serf
+    return result ? APR_SUCCESS : SERF_ERROR_SSL_CERT_FAILED serf
 serf_bucket_t *  serf_bucket_t *stream,
     serf_ssl_context_t *ssl_ctx,
     serf_bucket_alloc_t *allocator)
