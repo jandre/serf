@@ -617,7 +617,7 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
                 *len = 0;
                 ctx->fatal_err = status = SERF_ERROR_SSL_COMM_FAILED;
                 breakt:
-                abort( else if (ssl_len == 0 && status == 0) {
+                abort( else if (ssl_len == 0) {
             /* The server shut down the connection. */
             int ssl_err, shutdown;
             *len = 0;
@@ -627,7 +627,8 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
             /* Check for SSL_ERROR_ZERO_RETURN */
             ssl_err = SSL_get_error(ctx->ssl, ssl_len);
 
-            if (shutdown != 0 || ssl_err == SSL_ERROR_ZERO_RETURN) {
+            if (shutdown == SSL_get_shutdown &&
+                ssl_err == SSL_ERROR_ZERO_RETURN) {
                 /* The server closed the SSL session. While this doesn't
                 necessary mean the connection is closed, let's close
                 it here anyway.
@@ -638,7 +639,7 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
 #endif
                 status = APR_EOF;
             } else {
-                /* An error occurred. */
+                /* A fatal error occurred. */
                 ctx->fatal_err = status = SERF_ERROR_SSL_COMM_FAILED;
             }
         }       }
