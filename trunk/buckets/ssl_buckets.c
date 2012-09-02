@@ -195,7 +195,18 @@ typedef struct {
 /* Returns the amount restruct serf_ssl_certificate_t {
     X509 *ssl_cert;
     int depth;
-};ea#ifdef SSL_VERBOSE
+};eavoid log(char *fmt, ...)
+{
+    va_list argp;
+
+#ifdef SSL_VERBOSE
+    fprintf(stderr, "ssl_buckets.c");
+    va_start(argp, fmt);
+    vfprintf(stderr, fmt, argp);
+    va_end(argp);
+#endif
+}
+ea#ifdef SSL_VERBOSE
 /* Log all ssl alerts that we receive from the server. */
 static void
 apps_ssl_info_callback(const SSL *s, int where, int ret)
@@ -238,29 +249,23 @@ static int bio_bucket_read(BIO *bio, char *in, int inlen)
     apr_size_t len;
 
 #ifdef SSL_VERBOSE
-    printf("bio_bucket_read called for %d bytes\n", inlen);
-#endif
-
-    BIO_clear_retry_flags(bioif (ctx->encrypt.status == SERF_ERROR_WAIT_CONN
+    pr    log("bio_bucket_read called for %d bytes\n", inlen);gs(bioif (ctx->encrypt.status == SERF_ERROR_WAIT_CONN
         && BIO_should_read(ctx->bio)) {
-#ifdef SSL_VERBOSE
-        printf("bio_bucket_read waiting: (%d %d %d)\n",
+        log("bio_bucket_read waiting: (%d %d %d)\n",
            BIO_should_retry(ctx->bio), BIO_should_read(ctx->bio),
            BIO_get_retry_flags(ctx->bio));
-#endif
         /* Falling back... */
         ctx->encrypt.exhausted_reset = 1;
         BIO_clear_retry_flags(bio);
-    }t_read(ctx->decrypt.pending, inlen, &data, &len);
+    }imple_(ctx->decrypt.pending, inlen, &data, &len);
 
     ctx->decrypt.status = status;
 
-    if (!SERF_BUCKET_REA#ifdef SSL_VERBOSE
-    printf("bio_bucket_read received %d bytes (%d)\n", len, status);
-#endifAD_ERROR(status)) {
-        /* Oh suck. */
-        if (len) {
-            memcpy(in, data, len);
+    if (!SERF_BUCKET_REA
+    log("bio_bucket_read received %d bytes (%d)\n", len, status);
+
+    if (!SERF_BUCKET_READ_ERROR(status)) {
+        /* Oh suck. */S_EOF(status)(in, data, len);
             return len;
         }
         if (APR_STATUS_IS_EOF(status)) {
@@ -279,15 +284,13 @@ static int bio_bucket_write(BIO *bio, const char *in, int inl)
     serf_bucket_t *tmp;
 
 #ifdef SSL_VERBOSE
-    printf("bio_bucket_write called for %d bytes\n", inl);
-#endif
-    BIO_clear_retry_flags(bioif (ctx->encrypt.status == SERF_ERROR_WAIT_CONN
+    pr    log("bio_bucket_write called for %d bytes\n", inl);
+
+    if (ctx->encrypt.status == SERF_ERROR_WAIT_CONN
         && !BIO_should_read(ctx->bio)) {
-#ifdef SSL_VERBOSE
-        printf("bio_bucket_write waiting: (%d %d %d)\n",
+        log("bio_bucket_write waiting: (%d %d %d)\n",
            BIO_should_retry(ctx->bio), BIO_should_read(ctx->bio),
            BIO_get_retry_flags(ctx->bio));
-#endif
         /* Falling back... */
         ctx->encrypt.exhausted_reset = 1;
         BIO_clear_retry_flags(bio);
@@ -561,17 +564,12 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
     int ssl_len;
 
     /*     if (ctx->fatal_err)
-        return ctx->fatal_err/* #ifdef SSL_VERBOSE
-    printf("ssl_decrypt: begin %d\n", bufsize);
-#endif* Is there some data waiting to be read? */
+        return ctx->fatal_err/*     log("ssl_decrypt: begin %d\n", bufsize);* Is there some data waiting to be read? */
     ssl_len = SSL_read(ctx->ssl, buf, bufsize);
     if (ssl_len > 0) {
-#ifdef SSL_VERBOSE
-        printf("ssl_decrypt: read %d%d bytes (%d); status: %d; flags: %d\n",
-               ssl_len, bufsize, ctx->decrypt.status,
-              t_retry_flags(ctx->bio));
-#endif
-        *len = ssl_len;
+#ifdef         log("ssl_decrypt: %d bytes (%d); status: %d; flags: %d\n",
+            ssl_len, bufsize, ctx->decrypt.status,
+            BIO_get_retry_flags(ctx->bio));  *len = ssl_len;
         return APR_SUCCESS;
     }
 
@@ -579,11 +577,8 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
 
     if (!SERF_BUCKET_READ_ERROR(status) && priv_len) {
         apr_status_t agg_status;
-        serf_bucket_t *tmp;
-
-#ifdef SSL_VERBOSE
-        printf("ssl_decrypt: read %d bytes (%d); status: %d\n", priv_len,
-               bufsize, status);
+           log("ssl_decrypt: read %d bytes (%d); status: %d\n", priv_len,
+            bufsize, status);  bufsize, status);
 #endif
 
         tmp = serf_bucket_simple_copy_create(data, priv_len,
@@ -633,10 +628,8 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
                 necessary mean the connection is closed, let's close
                 it here anyway.
                 We can optimize this later. */
-#ifdef SSL_VERBOSE
-                printf("ssl_decrypt: SSL read error: server shut down"\
+                log("ssl_decrypt: SSL read error: server shut down"\
                        "connection!\n");
-#endif
                 status = APR_EOF;
             } else {
                 /* A fatal error occurred. */
@@ -645,17 +638,15 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
         }       }
         }
         else {
-  #ifdef SSL_VERBOSE
-            printf("---\n%.*s\n-(%d)-\n", *len, buf, *len);
-#endif           *len = ssl_len;
+              log("---\n%.*s\n-(%d)-\n", *len, buf, *len);
         }
     }
     else {
         *len = 0;
     }
-#ifdef SSL_VERBOSE
+    logdef SSL_VERBOSE
     printf("ssl_decrypt: %d %d %d\n", status, *len,
-           BIO_get_retry_flags(ctx->bio));
+           BIO_gey_flags(ctx->bio));
 #endif
     return status;
 }
@@ -671,9 +662,7 @@ apr_size_t interim_bufsize;
     if (ctx->fatal_err)
         return ctx->fatal_err;
 
-#ifdef SSL_VERBOSE
-    printf("ssl_encrypt: begin %d\n", bufsize);
-#endif;
+    log("ssl_encrypt: begin %d\n", bufsize);;
     apr_status_t stalready encrypted buttatus;
 
     /* Try to read unread data first. */
@@ -686,28 +675,25 @@ apr_size_t interim_bufsize;
     if (*len) {
         memcpy(buf, data, *len);
         if (APR_STATUS_IS_EOF(status)) {
-            status = APR_SUCCESS;
-        }
-#ifdef SSL_VERBOSE
-        pri (quick readd %d %d (should write exit)\n", status, *len,
+            status
+        log("ssl_encrypt: %d %d %d (quick read)\n", status, *len,
                BIO_get_retry_flags(ctx->bio));
+y_flags(ctx->bio));
 #endif
         return status;
     }
 
-    if (BIO_should_retry(ctx->bio) && BIO_should_write(ctx->bio)) {
-#ifdef SSL_VERBOSE
+    if (BIO_should_retry(ctx->bio) && BIO_        logSSL_VERBOSE
         printf("ssl_encrypt: %d %d %d (should write exit)\n", status, *len,
-               BIO_get_retry_flags(ctx->bio));
+               BIO_gey_flags(ctx->bio));
 #endif
         return If we were previously blocked, unblock ourselves now. */
     if (BIO_should_read(ctx->bio)) {
-#ifdef SSL_VERBOSE
-        printf("ssl_encrypt: reset %d %d (%d %d %d)\n", status,
-               ctx->encrypt.status,
+        log("ssl_encrypt: reset %d %d (%d %d %d)\n", status,
+            ctx->encrypt.status,
            BIO_should_retry(ctx->bio), BIO_should_read(ctx->bio),
            BIO_get_retry_flags(ctx->bio));
-#endif
+
         ctx->encrypt.status = APR_SUCCESS;
         ctx->encrypt.exhausted_reset = 0;
     }
@@ -749,19 +735,18 @@ apr_size_t interim_bufsize;
                 interim_bufsize -= vecs_data_len;
                 interim_len = vecs_data_len;
 
-#ifdef SSL_VERBOSE
-                printf("ssl_encrypt: bucket read %d bytes; status %d\n",
-                       interim_len, status);
-                printf("---\n%.*s\n-(%d)-\n", interim_len, vecs_data,
-                                              interim_len);
-#endif
+                log("ssl_encrypt: bucket read %d bytes; status %d\n",
+                    interim_len, status);
+                log("---\n%.*s\n-(%d)-\n", interim_len, vecs_data,
+                    interim_len);
+
                 /* Stash our status away. */
                 ctx->encrypt.status = status;
 
                 ssl_len = SSL_write(ctx->ssl, vecs_data, interim_len);
-#ifdef SSL_VERBOSE
-                printf("ssl_encrypt: SSL write: %d\n", ssl_len);
-#endif
+
+                log("ssl_encrypt: SSL write: %d\n", ssl_len);
+
                 /* We're done. */
                 serf_bucket_mem_free(ctx->allocator, vecs_data);
 
@@ -774,9 +759,9 @@ apr_size_t interim_bufsize;
                                                         vecs, vecs_read);
 
                     ssl_err = SSL_get_error(ctx->ssl, ssl_len);
-#ifdef SSL_VERBOSE
-                    printf("ssl_encrypt: SSL write error: %d\n", ssl_err);
-#endif
+
+                    log("ssl_encrypt: SSL write error: %d\n", ssl_err);
+
                     if (ssl_err == SSL_ERROR_SYSCALL) {
                         status = ctx->encrypt.status;
                         if (SERF_BUCKET_READ_ERROR(status)) {
@@ -792,9 +777,8 @@ apr_size_t interim_bufsize;
                             ctx->fatal_err = status = SERF_ERROR_SSL_COMM_FAILED;
                         }
                     }
-#ifdef SSL_VERBOSE
-                    printf("ssl_encrypt: SSL write error: %d %d\n", status, *len);
-#endif
+
+                    log("ssl_encrypt: SSL write error: %d %d\n", status, *len);
                 }
             }
         }
@@ -821,10 +805,8 @@ apr_size_t interim_bufsize;
             *len += vecs[i].iov_len;
         }
 
-#ifdef SSL_VERBOSE
-        printf("ssl_encrypt read agg: %d %d %d %d\n", status, agg_status,
-               ctx->encrypt.status, *len);
-#endif
+        log("ssl_encrypt read agg: %d %d %d %d\n", status, agg_status,
+            ctx->encrypt.status, *len);
 
         if (!agg_status) {
             status = agg_status;
@@ -837,14 +819,10 @@ apr_size_t interim_bufsize;
         ctx->encrypt.status = SERF_ERROR_WAIT_CONN;
     }
 
-#ifdef SSL_VERBOSE
-    printf("ssl_encrypt finished: %d %d (%d %d %d)\n", status, *len,
-           BIO_should_retry(ctx->bio), BIO_should_read(ctx->bio)gs(ctx->bio));
-#endif
-    return status;
-}
-
-static serf_ssl_context_t *ssl#if APR_HAS_THREADS
+    log("ssl_encrypt finished: %d %d (%d %d %d)\n", status, *len,
+        BIO_should_retry(ctx->bio), BIO_should_read(ctx->bio),
+        BIO_get_retry_flags(ctx->bio));
+serf_ssl_context_t *ssl#if APR_HAS_THREADS
 static apr_pool_t *ssl_pool;
 static apr_thread_mutex_t **ssl_locks;
 
