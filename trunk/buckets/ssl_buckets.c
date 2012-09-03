@@ -195,12 +195,12 @@ typedef struct {
 /* Returns the amount restruct serf_ssl_certificate_t {
     X509 *ssl_cert;
     int depth;
-};eavoid log(char *fmt, ...)
+};eastatic void log(char *fmt, ...)
 {
     va_list argp;
 
 #ifdef SSL_VERBOSE
-    fprintf(stderr, "ssl_buckets.c");
+    fprintf(stderr, "ssl_buckets.c: ");
     va_start(argp, fmt);
     vfprintf(stderr, fmt, argp);
     va_end(argp);
