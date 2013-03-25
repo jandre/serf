@@ -756,16 +756,19 @@ apr_size_t interim_bufsize;
                 serf__log(SSL_VERBOSE, __FILE__, 
                           "ssl_encrypt: SSL write: %d\n", ssl_len);
 
-                /* We're done. */
-                serf_bucket_mem_free(ctx->allocator, vecs_data);
-
                 /* If we failed to write... */
                 if (ssl_len < 0) {
                     int ssl_err;
 
-                    /* Ah, bugger. We need to put that data back. */
-                    serf_bucket_aggregate_prepend_iovec(ctx->encrypt.stream,
-                                                        vecs, vecs_read);
+                    /* Ah, bugger. We need to put that data back.
+                       Note: use the copy here, we do not own the original iovec
+                       data buffer so it will be freed on next read. */
+                    serf_bucket_t *vecs_copy =
+                        serf_bucket_simple_own_create(vecs_data,
+                                                      vecs_data_len,
+                                                      ctx->allocator);
+                    serf_bucket_aggregate_prepend(ctx->encrypt.stream,
+                                                  vecs_copy);
 
                     ssl_err = SSL_get_error(ctx->ssl, ssl_len);
 
@@ -792,6 +795,9 @@ apr_size_t interim_bufsize;
                     serf__log(SSL_VERBOSE, __FILE__, 
                               "ssl_encrypt: SSL write error: %d %d\n",
                               status, *len);
+                } else {
+                    /* We're done with this data. */
+                    serf_bucket_mem_free(ctx->allocator, vecs_data);
                 }
             }
         }
