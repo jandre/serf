@@ -16,18 +16,7 @@
 #include "serf.h"
 #include "serf_private.h"
 #include "serf_bucket_util.h"
-#include "bucket_private.h" The bucket-independent ssl context that this bucket is associated with */
-    serf_ssl_context_t *ssl_ctx;
-
-    /* Pointer to the 'right' databuf. */
-    serf_databuf_t *databuf;
-
-    /* Pointer to our stream, so we can find it later. */
-    serf_bucket_t **our_stream;
-} ssl_context_t;
-
-
-/* Returns the amount revoid serf_ssl_client_cert_provider_set(
+#include "bucket_private.h" Tvoid serf_ssl_client_cert_provider_set(
     serf_ssl_context_t *context,
     serf_ssl_need_client_cert_t callback,
     void *data,
