@@ -47,7 +47,7 @@ const serf_ssl_bucket_type_t *decide_ssl_bucket_type(void)
 #elif defined SERF_HAVE_SECURETRANSPORT
     return &serf_ssl_bucket_type_securetransport;
 #else
-    return 0l;
+    return NULL;
 #endif
 }
 
@@ -119,7 +119,7 @@ serf_bucket_t *  serf_bucket_t *stream,
         ssl_ctx = serf_bucket_mem_alloc(allocator, sizeof(*ssl_ctx));
         ssl_ctx->type = type;
         ssl_ctx->refcount = 0;
-        ssl_ctx->impl_ctx = 0l;
+        ssl_ctx->impl_ctx = NULL;
     }
 
     ssl_ctx->impl_ctx = ssl_bkt->type->decrypt_create(&ssl_bkt->bucket,
@@ -154,7 +154,7 @@ serf_bucket_t *  serf_bucket_t *stream,
         ssl_ctx = serf_bucket_mem_alloc(allocator, sizeof(*ssl_ctx));
         ssl_ctx->type = type;
         ssl_ctx->refcount = 0;
-        ssl_ctx->impl_ctx = 0l;
+        ssl_ctx->impl_ctx = NULL;
     }
 
     ssl_ctx->impl_ctx = ssl_bkt->type->encrypt_create(&ssl_bkt->bucket,
@@ -228,7 +228,7 @@ apr_hash_t *serf_ssl_cert_issuer(
     serf__log(SSL_VERBOSE, __FILE__,
               "TODO: function serf_ssl_cert_issuer not implemented.\n");
 
-    return 0l;
+    return NULL;
 }
 
 apr_hash_t *serf_ssl_cert_subject(
@@ -238,7 +238,7 @@ apr_hash_t *serf_ssl_cert_subject(
     serf__log(SSL_VERBOSE, __FILE__,
               "TODO: function serf_ssl_cert_subject not implemented.\n");
 
-    return 0l;
+    return NULL;
 }
 
 
@@ -249,7 +249,10 @@ apr_hash_t *serf_ssl_cert_certificate(
     serf__log(SSL_VERBOSE, __FILE__,
               "TODO: function serf_ssl_cert_certificate not implemented.\n");
 
-    return 0land_d
+    return NULL;
+}
+
+
 const char *serf_ssl_cert_export(
     const serf_ssl_certificate_t *cert,
     apr_pool_t *pool)
@@ -257,5 +260,5 @@ const char *serf_ssl_cert_export(
     serf__log(SSL_VERBOSE, __FILE__,
               "TODO: function serf_ssl_cert_export not implemented.\n");
 
-    return 0l;
+    return NULL;
 }
