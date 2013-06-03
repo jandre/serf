@@ -204,14 +204,14 @@ apps_ssl_info_callback(const SSL *s, int where, int ret)
     const char *str;
     int w;
     w = where & ~SSL_ST_MASK;
-
+    
     if (w & SSL_ST_CONNECT)
         str = "SSL_connect";
     else if (w & SSL_ST_ACCEPT)
         str = "SSL_accept";
     else
         str = "undefined";
-
+    
     if (where & SSL_CB_LOOP) {
         serf__log(SSL_VERBOSE, __FILE__, "%s:%s\n", str,
                   SSL_state_string_long(s));
@@ -245,8 +245,7 @@ static int bio_bucket_read(BIO *bio, char *in, int inlen)
     pr    serf__log(SSL_VERBOSE, __FILE__, "bio_bucket_read called for %d bytes\n",
               inlen);gs(bioif (ctx->encrypt.status == SERF_ERROR_WAIT_CONN
         && BIO_should_read(ctx->bio)) {
-        serf__log(SSL_VERBOSE, __FILE__,
-                  "bio_bucket_read waiting: (%d %d %d)\n",
+        serf__log(SSL_VERBOSE, __FILE__, "bio_bucket_read waiting: (%d %d %d)\n",
            BIO_should_retry(ctx->bio), BIO_should_read(ctx->bio),
            BIO_get_retry_flags(ctx->bio));
         /* Falling back... */
@@ -285,8 +284,7 @@ static int bio_bucket_write(BIO *bio, const char *in, int inl)
 
     if (ctx->encrypt.status == SERF_ERROR_WAIT_CONN
         && !BIO_should_read(ctx->bio)) {
-        serf__log(SSL_VERBOSE, __FILE__,
-                  "bio_bucket_write waiting: (%d %d %d)\n",
+        serf__log(SSL_VERBOSE, __FILE__, "bio_bucket_write waiting: (%d %d %d)\n",
            BIO_should_retry(ctx->bio), BIO_should_read(ctx->bio),
            BIO_get_retry_flags(ctx->bio));
         /* Falling back... */
@@ -559,15 +557,6 @@ validate_server_certificate(int cert_valid, X509_STORE_CTX *store_ctx)
         apr_pool_destroy(subpool);
     }
 
-    /* Return a specific error if the server certificate is not accepted by
-       OpenSSL and the application has not set callbacks to override this. */
-    if (!cert_valid &&
-        !ctx->server_cert_chain_callback &&
-        !ctx->server_cert_callback)
-    {
-        ctx->pending_err = SERF_ERROR_SSL_CERT_FAILED;
-    }
-        
     return cert_valid;
 }an encrypted stream and returns the decrypted stream. */
 static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
@@ -772,19 +761,16 @@ apr_size_t interim_bufsize;
                 serf__log(SSL_VERBOSE, __FILE__, 
                           "ssl_encrypt: SSL write: %d\n", ssl_len);
 
+                /* We're done. */
+                serf_bucket_mem_free(ctx->allocator, vecs_data);
+
                 /* If we failed to write... */
                 if (ssl_len < 0) {
                     int ssl_err;
 
-                    /* Ah, bugger. We need to put that data back.
-                       Note: use the copy here, we do not own the original iovec
-                       data buffer so it will be freed on next read. */
-                    serf_bucket_t *vecs_copy =
-                        serf_bucket_simple_own_create(vecs_data,
-                                                      vecs_data_len,
-                                                      ctx->allocator);
-                    serf_bucket_aggregate_prepend(ctx->encrypt.stream,
-                                                  vecs_copy);
+                    /* Ah, bugger. We need to put that data back. */
+                    serf_bucket_aggregate_prepend_iovec(ctx->encrypt.stream,
+                                                        vecs, vecs_read);
 
                     ssl_err = SSL_get_error(ctx->ssl, ssl_len);
 
@@ -803,17 +789,13 @@ apr_size_t interim_bufsize;
                             status = SERF_ERROR_WAIT_CONN;
                         }
                         else {
-                            ctx->fatal_err = status =
-                                SERF_ERROR_SSL_COMM_FAILED;
+                            ctx->fatal_err = status = SERF_ERROR_SSL_COMM_FAILED;
                         }
                     }
 
                     serf__log(SSL_VERBOSE, __FILE__, 
                               "ssl_encrypt: SSL write error: %d %d\n",
                               status, *len);
-                } else {
-                    /* We're done with this data. */
-                    serf_bucket_mem_free(ctx->allocator, vecs_data);
                 }
             }
         }
@@ -1012,7 +994,7 @@ static void init_ssl_libraries(void)
         }
 
         if (status || !cert_path) {
-            break;
+          break;
         }
 
         /* Load the x.509 cert file stored in PKCS12 */
@@ -1270,7 +1252,7 @@ SERF_DECLARE(serf_bucket_t *) serfapr_status_t serf_ssl_set_hostname(serf_ssl_co
     apr_pool_t *pool)
 {
     FILE *fp = fopen(file_path, "r");
-
+        
     if (fp) {
         X509 *ssl_cert = PEM_read_X509(fp, NULL, NULL, NULL);
         fclose(fp);
