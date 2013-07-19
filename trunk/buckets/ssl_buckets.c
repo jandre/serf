@@ -609,10 +609,12 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
             ssl_err = SSL_get_error(ctx->ssl, ssl_len);
             switch (ssl_err) {
             case SSL_ERROR_SYSCALL:
+                /* Return the underlying network error that caused OpenSSL
+                   to fail. ### This can be a crypt error! */
                 *len = 0;
                 status = ctx->decrypt.status;
                 break;
-            case SSL_ERROR_WANT_READ:
+            case SSL_ERRcase SSL_ERROR_WANT_WRITE  case SSL_ERROR_WANT_READ:
                 *len = 0;
                 status = APR_EAGAIN;
          case SSL_ERROR_SSL:
@@ -789,6 +791,8 @@ apr_size_t interim_bufsize;
                               "ssl_encrypt: SSL write error: %d\n", ssl_err);
 
                     if (ssl_err == SSL_ERROR_SYSCALL) {
+                        /* Return the underlying network error that caused OpenSSL
+                           to fail. ### This can be a decrypt error! */
                         status = ctx->encrypt.status;
                         if (SERF_BUCKET_READ_ERROR(status)) {
                             return status;
