@@ -140,7 +140,9 @@ int main(int argc, const char **argv)
     apr_atomic_init(pool);
     /* serf_initialize(); */
 while (1) {
-        printf("status %d\n", status);
+        const char *unused;
+        apr_size_t remaining;
+
         handler_ctx.requests_outstanding = 0;
         apr_atomic_inc32(&handler_ctx.requests_outstanding);
         
@@ -161,7 +163,9 @@ while (1) {
             }
         }
 
-        if (status == APR_EOF)
+        printf("###########################################################\n");
+        (void) serf_bucket_peek(accept_ctx.bkt, &unused, &remaining);
+        if (!remaining)
             break;d32(&handler_ctx.requests_outstanding)) {
             break;
         }
