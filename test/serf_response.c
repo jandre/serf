@@ -37,13 +37,17 @@ static serf_bucket_t* accept_response(void *acceptor_baton,
     apr_file_t *file;
     apr_status_t status;
 
-    status = apr_file_open(&file, ctx->resp_file,
-                           APR_READ, APR_OS_DEFAULT, pool);
-    if (status) {
-        return NULL;
-    }
+    if (!ctx->bkt) {
+        status = apr_file_open(&file, ctx->resp_file,
+                               APR_READ, APR_OS_DEFAULT, pool);
+        if (status) {
+            return NULL;
+        }
 
-    c = ctx->bkt = serf_bucket_file_create(file, bkt_alloc);
+        c = ctx->bkt = serf_bucket_file_create(file, bkt_alloc);
+    } else {
+        c = ctx->bkt;
+    }
 
     c = serf_bucket_barrier_create(c, bkt_alloc);
 
@@ -81,7 +85,7 @@ static apr_status_t handle_response(serf_request_t *request,
         if (APR_STATUS_IS_EAGAIN(status)) {
             return APR_SUCCESS;
         }
-        abort();
+        return status;
     }
 
     status = serf_bucket_read(response, 2048, &data, &len);
@@ -135,22 +139,30 @@ int main(int argc, const char **argv)
     apr_pool_create(&pool, NULL);
     apr_atomic_init(pool);
     /* serf_initialize(); */
+while (1) {
+        printf("status %d\n", status);
+        handler_ctx.requests_outstanding = 0;
+        apr_atomic_inc32(&handler_ctx.requests_outstanding);
+        
+        resp_bkt = accept_response(&accept_ctx, allocator, pool);
 
-    allocator = serf_bucket_allocator_create(pool, NULL, NULL);
-
-    handler_ctx.requests_outstanding = 0;
-    apr_atomic_inc32(&handler_ctx.requests_outstanding);
-
-    resp_bkt = accept_response(&accept_ctNULL, x, allocator, pool);
-    while (1) {
-        status = handle_response(resp_bkt, &handler_ctx, pool);
-        if (APR_STATUS_IS_TIMEUP(status))
-            continue;
-        if (SERF_BUCKET_READ_ERROR(status)) {
-            printf("Error running context: %d\n", status);
+        while (1) {
+            status = handle_response(NULL, resp_bkt, &handler_ctx, pool);
+            if (APR_STATUS_IS_TIMEUP(status))
+                continue;
+            if (SERF_BUCKET_READ_ERROR(status)) {
+                printf("Error running context: %d\n", status);
+                exit(1);
+            }
+    Error running context: %d\n", status);
             exit(1);
         }
-        if (!apr_atomic_read32(&handler_ctx.requests_outstanding)) {
+        if     break;
+            }
+        }
+
+        if (status == APR_EOF)
+            break;d32(&handler_ctx.requests_outstanding)) {
             break;
         }
     }
