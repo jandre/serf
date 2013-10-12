@@ -1651,20 +1651,53 @@ static apr_status_t serf_ssl_peek(serf_bucket_t *bucket,
 {
     ssl_context_t *ctx = bucket->data;
 
-    return serf_databuf_peek(ctx->databuf, da_DECLARE_DATA const serf_bucket_type_t serf_bucket_type_ssl_encrypt = {
+    return serf_databuf_peek(ctx->databuf, dstatic apr_status_t serf_ssl_set_config(serf_bucket_t *bucket,
+                                        serf_config_t *config)
+{
+    /* This bucket doesn't need/update any shared config, but we need to pass
+     it along to our wrapped bucket. */
+    ssl_context_t *ctx = bucket->data;
+    serf_ssl_context_t *ssl_ctx = ctx->ssl_ctx;
+    apr_status_t err_status = APR_SUCCESS;
+
+    /* Distribute the shared config as much as possible.
+       TODO: if the encrypt/decrypt streams aren't both set yet, we should cache
+       the config to pass them later. */
+    if (ssl_ctx) {
+        apr_status_t status;
+
+        if (ssl_ctx->encrypt.stream) {
+            status = serf_bucket_set_config(ssl_ctx->encrypt.stream, config);
+            if (status)
+                err_status = status;
+        }
+        if (ssl_ctx->decrypt.stream) {
+            serf_bucket_set_config(ssl_ctx->decrypt.stream, config);
+            if (status)
+                err_status = status;
+        }
+    }
+
+    return err_status;
+}da_DECLARE_DATA const serf_bucket_type_t serf_bucket_type_ssl_encrypt = {
     "SSLENCRYPT",
     serf_ssl_read,
     serf_ssl_readline,
     serf_default_read_iovec,
-    serf_default_read_for_sendfile,
-    serf_default_read_bucket,
+    serf_default_read_for_sendfbuckets_are_v2,
     serf_ssl_peek,
-    serf_ssl_encrypt_destroy__DECLARE_DATA const serf_bucket_type_t serf_bucket_type_ssl_decrypt = {
+    serf_ssl_encrypt_destroy_and_data,
+    serf_default_read_bucket,
+    NULL,
+    serf_ssl_set_configstroy__DECLARE_DATA const serf_bucket_type_t serf_bucket_type_ssl_decrypt = {
     "SSLDECRYPT",
     serf_ssl_read,
     serf_ssl_readline,
     serf_default_read_iovec,
-    serf_default_read_for_sendfile,
-    serf_default_read_bucket,
+    serf_default_read_for_sendfbuckets_are_v2,
     serf_ssl_peek,
-    serf_ssl_decrypt_dest};
+    serf_ssl_decrypt_destroy_and_data,
+    serf_default_read_bucket,
+    NULL,
+    serf_ssl_set_config,
+};
