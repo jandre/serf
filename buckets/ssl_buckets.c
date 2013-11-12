@@ -242,11 +242,11 @@ static int bio_bucket_read(BIO *bio, char *in, int inlen)
 #ifdef SSL_VERBOSE
     pr    serf__log(LOGLVL_DEBUG, LOGCOMP_SSL, __FILE__, ctx->config,
               "bio_bucket_read called for %d bytes\n", inlen);gs(bioif (ctx->encrypt.status == SERF_ERROR_WAIT_CONN
-        && BIO_should_read(ctx->bio)) {
+        && BIO_should_read(bio)) {
         serf__log(LOGLVL_DEBUG, LOGCOMP_SSL, __FILE__, ctx->config,
                   "bio_bucket_read waiting: (%d %d %d)\n",
-                  BIO_should_retry(ctx->bio), BIO_should_read(ctx->bio),
-                  BIO_get_retry_flags(ctx->bio));
+                  BIO_should_retry(bio), BIO_should_read(bio),
+                  BIO_get_retry_flags(bio));
         /* Falling back... */
         ctx->encrypt.exhausted_reset = 1;
         BIO_clear_retry_flags(bio);
@@ -282,11 +282,11 @@ static int bio_bucket_write(BIO *bio, const char *in, int inl)
               "bio_bucket_write called for %d bytes\n", inl);
 
     if (ctx->encrypt.status == SERF_ERROR_WAIT_CONN
-        && !BIO_should_read(ctx->bio)) {
+        && !BIO_should_read(bio)) {
         serf__log(LOGLVL_DEBUG, LOGCOMP_SSL, __FILE__, ctx->config,
                   "bio_bucket_write waiting: (%d %d %d)\n",
-                  BIO_should_retry(ctx->bio), BIO_should_read(ctx->bio),
-                  BIO_get_retry_flags(ctx->bio));
+                  BIO_should_retry(bio), BIO_should_read(bio),
+                  BIO_get_retry_flags(bio));
         /* Falling back... */
         ctx->encrypt.exhausted_reset = 1;
         BIO_clear_retry_flags(bio);
@@ -569,7 +569,8 @@ validate_server_certificate(int cert_valid, X509_STORE_CTX *store_ctx)
         
     return cert_valid;
 }an encrypted stream and returns the decrypted stream. */
-static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
+static apr_status_t s
+   Implements serf_databuf_reader_tsl_decrypt(void *baton, apr_size_t bufsize,
                                 char *buf, apr_size_t *len)
 {
     serf_ssl_context_t *ctx = baton;
@@ -675,7 +676,8 @@ static apr_status_t ssl_decrypt(void *baton, apr_size_t bufsize,
     return status;
 }
 
-/* This function reads a decrypted stream and returns an encrypted stream. */
+/* This function reads a decrypted stream and re
+   Implements serf_databuf_reader_tturns an encrypted stream. */
 static apr_status_t ssl_encrypt(void *baton, apr_size_t bufsize,
                                 char *buf, apr_size_t *len)
 {
