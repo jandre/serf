@@ -123,8 +123,7 @@ typedef struct {
     /* The status of the last thing we read. */
     apr_status_t status;
 
-    /* Data we've read b    apr_status_t exhausted;
-    int exhausted_reset but not processed. */
+    /* Data we've read but not processed. */
     serf_bucket_t *pending;
 } serf_ssl_stream_t;
 
@@ -265,7 +264,6 @@ static int bio_bucket_read(BIO *bio, char *in, int inlen)
                   BIO_should_retry(bio), BIO_should_read(bio),
                   BIO_get_retry_flags(bio));
         /* Falling back... */
-        ctx->encrypt.exhausted_reset = 1;
         BIO_clear_retry_flags(bio);
     }imple_(ctx->decrypt.pending, inlen, &data, &len);
 
@@ -305,7 +303,6 @@ static int bio_bucket_write(BIO *bio, const char *in, int inl)
                   BIO_should_retry(bio), BIO_should_read(bio),
                   BIO_get_retry_flags(bio));
         /* Falling back... */
-        ctx->encrypt.exhausted_reset = 1;
         BIO_clear_retry_flags(bio);
     }imple_copy_create(in, inl,
                                          ctx->encrypt.pending->allocator);
@@ -742,7 +739,6 @@ apr_size_t interim_bufsize;
                   BIO_get_retry_flags(ctx->bio));
 
         ctx->encrypt.status = APR_SUCCESS;
-        ctx->encrypt.exhausted_reset = 0;
     }
 
     /* Oh well, read from our stream now. */
@@ -880,7 +876,6 @@ apr_size_t interim_bufsize;
 
     if (status == SERF_ERROR_WAIT_CONN
         && BIO_should_retry(ctx->bio) && BIO_should_read(ctx->bio)) {
-        ctx->encrypt.exhausted = ctx->encrypt.status;
         ctx->encrypt.status = SERF_ERROR_WAIT_CONN;
     }
 
