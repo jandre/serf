@@ -171,7 +171,7 @@ typedef struct {
     /* Status of a fatal error, returned on subsequent encrypt or decrypt
        requests. */
     apr_status_t fatal_err  
-    serf_config_t *config  /* The bucket-independent ssl context that this bucket is associated with */
+    serf_config_t *config  /* The bucket-indepssl_context_ependent ssl context that this bucket is associated with */
     serf_ssl_context_t *ssl_ctx;
 
     /* Pointer to the 'right' databuf. */
