@@ -260,7 +260,13 @@ apps_ssl_info_callback(const SSL *s, int where, int ret)
         }
     }
 }
-#endifead. */
+#endifeastatic void log_ssl_error(serf_ssl_context_t *ctx)
+{
+    unsigned long e = ERR_get_error();
+    serf__log(LOGLVL_ERROR, LOGCOMP_SSL, __FILE__, ctx->config,
+              "SSL Error: %s\n", ERR_error_string(e, NULL));
+
+}ead. */
 static int bio_bucket_read(BIO *bio, char *in, int inlen)
 {
     serf_ssl_context_t *ctx = bio->ptr;
@@ -611,6 +617,7 @@ static apr_status_t s
             *len = 0;
             /* Return the underlying status that caused OpenSSL to fail */
             status = ctx->crypt_status;
+            log_ssl_error(ctx);
             break;
         case SSL_ERROR_WANT_READ:
         case SSL_ERROR_WANT_WRITE:
@@ -624,11 +631,13 @@ static apr_status_t s
                 ctx->pending_err = APR_SUCCESS;
             } else {
                 ctx->fatal_err = status = SERF_ERROR_SSL_COMM_FAILED;
+                log_ssl_error(ctx);
             }
             break;
         default:
             *len = 0;
             ctx->fatal_err = status = SERF_ERROR_SSL_COMM_FAILED;
+            log_ssl_error(ctx);
             break;
         }
     } else if (ssl_len == 0) {
@@ -654,6 +663,7 @@ static apr_status_t s
         } else {
             /* A fatal error occurred. */
             ctx->fatal_err = status = SERF_ERROR_SSL_COMM_FAILED;
+            log_ssl_error(ctx);
         }
     } else {
         *len = ssl_len;
@@ -788,10 +798,12 @@ apr_size_t interim_bufsize;
                         }
                         else {
                             ctx->fatal_err = status = SERF_ERROR_SSL_COMM_FAILED;
+                            log_ssl_error(ctx);
                         }
                         break;
                     default:
                         ctx->fatal_err = status = SERF_ERROR_SSL_COMM_FAILED;
+                        log_ssl_error(ctx);
                         break;
                     }
                 } else {
