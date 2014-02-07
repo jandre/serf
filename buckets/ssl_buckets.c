@@ -634,7 +634,7 @@ static apr_status_t s
                 status = ctx->pending_err;
                 ctx->pending_err = APR_SUCCESS;
             } else {
-                if (SSL_in_init(ctx->ssl)
+                if (SSL_in_init(ctx->ssl))
                     ctx->fatal_err = SERF_ERROR_SSL_SETUP_FAILED;
                 else
                     ctx->fatal_err = SERF_ERROR_SSL_COMM_FAILED;
@@ -805,7 +805,7 @@ apr_size_t interim_bufsize;
                             ctx->pending_err = APR_SUCCESS;
                         }
                         else {
-                            if (SSL_in_init(ctx->ssl)
+                            if (SSL_in_init(ctx->ssl))
                                 ctx->fatal_err = SERF_ERROR_SSL_SETUP_FAILED;
                             else
                                 ctx->fatal_err = SERF_ERROR_SSL_COMM_FAILED;
