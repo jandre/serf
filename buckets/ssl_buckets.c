@@ -1059,6 +1059,7 @@ static void init_ssl_libraries(void)
 
         ctx->cert_path = cert_path;
         p12 = d2i_PKCS12_bio(bio, NULL);
+        BIO_free(bio);
         apr_file_close(cert_file);
 
         i = PKCS12_parse(p12, NULL, pkey, cert, NULL);
