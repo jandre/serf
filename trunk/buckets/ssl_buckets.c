@@ -480,6 +480,10 @@ validate_server_certificate(int cert_valid, X509_STORE_CTX *store_ctx)
                     failures |= SERF_SSL_CERT_REVOKED;
                     break;
             default:
+                    serf__log(LOGLVL_WARNING, LOGCOMP_SSL, __FILE__,
+                              ctx->config,
+                              "validate_server_certificate, unknown cert "
+                              "failure %d\n", err);
                     failures |= SERF_SSL_CERT_UNKNOWN_FAILURE;
                     break;
         }
@@ -1057,6 +1061,7 @@ static void init_ssl_libraries(void)
         status = apr_file_open(&cert_file, cert_path, APR_READ, APR_OS_DEFAULT,
                                ctx->pool);
 
+        /* TODO: this will hang indefintely when the file can't be found. */
         if (status) {
             continue;
         }
@@ -1328,6 +1333,12 @@ SERF_DECLARE(serf_bucket_t *) serfapr_status_t serf_ssl_set_hostname(serf_ssl_co
 
         return APR_SUCCESS;
     }
+#if 0
+    else {
+        /* If we'd have had a serf context *, we could have used serf logging */
+        ERR_print_errors_fp(stderr);
+    }
+#endif
 
     return SERF_ERROR_SSL_CERT_FAILED serf
 apr_status_t serf_ssl_trust_cert(
@@ -1337,6 +1348,38 @@ apr_status_t serf_ssl_trust_cert(
     X509_STORE *store = SSL_CTX_get_cert_store(ssl_ctx->ctx);
 
     int result = X509_STORE_add_cert(store, cert->ssl_cert);
+
+    return result ? APR_SUCCESS : SERF_ERROR_SSL_CERT_FAILED serf
+apr_status_t serf_ssl_load_crl_file(serf_ssl_context_t *ssl_ctx,
+                                    const char *file_path,
+                                    apr_pool_t *pool)
+{
+    apr_file_t *crl_file;
+    X509_CRL *crl = NULL;
+    X509_STORE *store;
+    BIO *bio;
+    int result;
+    apr_status_t status;
+
+    status = apr_file_open(&crl_file, file_path, APR_READ, APR_OS_DEFAULT,
+                           pool);
+    if (status) {
+        return status;
+    }
+
+    bio = BIO_new(&bio_file_method);
+    bio->ptr = crl_file;
+
+    crl = PEM_read_bio_X509_CRL(bio, NULL, NULL, NULL);
+
+    apr_file_close(crl_file);
+    BIO_free(bio);
+
+    store = SSL_CTX_get_cert_store(ssl_ctx->ctx);
+
+    result = X509_STORE_add_crl(store, crl);
+
+    X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK|X509_V_FLAG_CRL_CHECK_ALL);
 
     return result ? APR_SUCCESS : SERF_ERROR_SSL_CERT_FAILED serf
 serf_bucket_t *  serf_bucket_t *stream,
