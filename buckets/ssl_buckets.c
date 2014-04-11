@@ -1365,9 +1365,9 @@ apr_status_t serf_ssl_trust_cert(
     }
     return APR_SUCCESS;
 }f
-apr_status_t serf_ssl_load_crl_file(serf_ssl_context_t *ssl_ctx,
-                                    const char *file_path,
-                                    apr_pool_t *pool)
+apr_status_t serf_ssl_add_crl_from_file(serf_ssl_context_t *ssl_ctx,
+                                        const char *file_path,
+                                        apr_pool_t *pool)
 {
     apr_file_t *crl_file;
     X509_CRL *crl = NULL;
