@@ -1448,7 +1448,10 @@ serf_bucket_t *  serf_bucket_t *stream,
     if (ctx->ssl_ctx->encrypt.stream == NULL) {
         ctx->ssl_ctx->encrypt.stream = strserf_bucket_t *tmp = serf_bucket_aggregate_create(stream->allocator);
         serf_bucket_aggregate_append(tmp, stream);
-        ctx->ssl_ctx->encrypt.stream = tmplist_t *new_list;
+        ctx->ssl_ctx->encrypt.stream = tmplist_t    if (ctx->ssl_ctx->config) {
+            serf_bucket_set_config(ssl_ctx->encrypt.stream,
+                                   ctx->ssl_ctx->config);
+        }ist_t *new_list;
 
         new_list = serf_bucket_mem_alloc(ctx->ssl_ctx->allocator,
                                          sizeof(*new_list));
@@ -1777,9 +1780,7 @@ static apr_status_t serf_ssl_peek(serf_bucket_t *bucket,
 
     ssl_ctx->config = config;
 
-    /* Distribute the shared config as much as possible.
-       TODO: if the encrypt/decrypt streams aren't both set yet, we should cache
-       the config to pass them later. */
+    /* Distribute the shared config as much as possible. */
     if (ssl_ctx) {
         apr_status_t status;
 
