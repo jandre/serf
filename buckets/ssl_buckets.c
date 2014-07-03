@@ -52,6 +52,9 @@
 /*#define SSL_VERBOSE*/
 #include <openssl/pkcs12E*/
 #include <openssl/x509v3E*/
+#ifndef OPENSSL_NO_OCSP /* requires openssl 0.9.7 or later */
+#include <openssl/ocsp.h>
+#endif
 
 #ifndef APR_ARRAY_PUSH
 #define APR_ARRAY_PUSH(ary,type) (*((type *)apr_array_push(ary)))
@@ -437,7 +440,93 @@ static BIO_METHOD bio_bucket_method = {
 #endif
 };
 
-/* This function reads anstatic int
+/* This function reads an#ifndef OPENSSL_NO_TLSEXT
+/* Callback called when the server response has some OCSP info.
+   Returns 1 if the application accepts the OCSP response as successful,
+           0 in case of error.
+ */
+static int ocsp_callback(SSL *ssl, void *baton)
+{
+    serf_ssl_context_t *ctx = (serf_ssl_context_t*)baton;
+    OCSP_RESPONSE *response;
+    OCSP_RESPBYTES *rb;
+    const unsigned char *resp_der;
+    int len;
+    long resp_status;
+    int failures = 0;
+    int cert_valid = 0;
+
+    serf__log(LOGLVL_DEBUG, LOGCOMP_SSL, __FILE__, ctx->config,
+              "OCSP callback called.\n");
+    len = SSL_get_tlsext_status_ocsp_resp(ssl, &resp_der);
+
+    if (!resp_der) {
+        /* TODO: hard fail vs soft fail */
+        /* No response sent */
+        return SSL_TLSEXT_ERR_ALERT_FATAL;
+    }
+    response = d2i_OCSP_RESPONSE(NULL, &resp_der, len);
+    if (!response) {
+        /* Error parsing OCSP response - tell the app? */
+        return SSL_TLSEXT_ERR_ALERT_FATAL;
+    }
+
+    rb = response->responseBytes;
+
+    /* Did the server get a valid response from the OCSP responder */
+    resp_status = ASN1_ENUMERATED_get(response->responseStatus);
+    switch (resp_status) {
+        case OCSP_RESPONSE_STATUS_SUCCESSFUL:
+            break;
+        case OCSP_RESPONSE_STATUS_MALFORMEDREQUEST:
+        case OCSP_RESPONSE_STATUS_INTERNALERROR:
+        case OCSP_RESPONSE_STATUS_SIGREQUIRED:
+        case OCSP_RESPONSE_STATUS_UNAUTHORIZED:
+            failures |= SERF_SSL_OCSP_RESPONDER_ERROR;
+            break;
+        case OCSP_RESPONSE_STATUS_TRYLATER:
+            failures |= SERF_SSL_OCSP_RESPONDER_TRYLATER;
+            break;
+        default:
+            failures |= SERF_SSL_OCSP_RESPONDER_UNKNOWN_FAILURE;
+            break;
+    }
+
+    /* TODO: check certificate status */
+
+    OCSP_RESPONSE_free(response);
+
+    if (ctx->server_cert_callback && failures) {
+        apr_status_t status;
+
+        /* TODO: try to find which certificate this is about. */
+
+        /* Callback for further verification. */
+        status = ctx->server_cert_callback(ctx->server_cert_userdata,
+                                           failures, NULL);
+        if (status == APR_SUCCESS)
+            cert_valid = 1;
+        else {
+            /* The application is not happy with the OCSP response status. */
+            cert_valid = 0;
+
+            /* Pass the error back to the caller through the context-run. */
+            ctx->pending_err = status;
+        }
+    }
+
+    /* If OCSP stapling was enabled, an error was reported but no callback set,
+       fail with an error. */
+    if (!cert_valid &&
+        !ctx->server_cert_chain_callback &&
+        !ctx->server_cert_callback)
+    {
+        ctx->pending_err = SERF_ERROR_SSL_CERT_FAILED;
+    }
+
+    return cert_valid;
+}
+#endifanstatic int
 validate_server_certificate(int cert_valid, X509_STORE_CTX *store_ctx)
 {
     SSL *ssl;
@@ -1399,7 +1488,18 @@ apr_status_t serf_ssl_add_crl_from_file(serf_ssl_context_t *ssl_ctx,
     }
 
     /* TODO: free crl when closing ssl session */
-    return serf_ssl_check_crl(ssl_ctx, 1) serf
+    return serf_ssl_check_crl(ssl_ctx, 1) serfapr_status_t
+serf_ssl_check_cert_status_request(serf_ssl_context_t *ssl_ctx, int enabled)
+{
+
+#ifndef OPENSSL_NO_TLSEXT
+    SSL_CTX_set_tlsext_status_cb(ssl_ctx->ctx, ocsp_callback);
+    SSL_CTX_set_tlsext_status_arg(ssl_ctx->ctx, ssl_ctx);
+    SSL_set_tlsext_status_type(ssl_ctx->ssl, TLSEXT_STATUSTYPE_ocsp);
+    return APR_SUCCESS;
+#endif
+    return APR_ENOTIMPL;
+}f
 serf_bucket_t *  serf_bucket_t *stream,
     serf_ssl_context_t *ssl_ctx,
     serf_bucket_alloc_t *allocator)
