@@ -1382,8 +1382,9 @@ SERF_DECLARE(serf_bucket_t *) serfapr_status_t serf_ssl_set_hostname(serf_ssl_co
     if (SSL_set_tlsext_host_name(context->ssl, hostname) != 1) {
         ERR_clear_error();
     }
+    return APR_SUCCESS;
 #endif
-    return APR_SUCCESS serfapr_status_t serf_ssl_use_default_certificates(serf_ssl_context_t *ssl_ctx)
+    return APR_ENOTIMPL serfapr_status_t serf_ssl_use_default_certificates(serf_ssl_context_t *ssl_ctx)
 {
     X509_STORE *store = SSL_CTX_get_cert_store(ssl_ctx->ctx);
 
