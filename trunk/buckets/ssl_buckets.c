@@ -174,6 +174,8 @@ typedef struct {
     /* Status of a fatal error, returned on subsequent encrypt or decrypt
        requests. */
     apr_status_t fatal_err  
+    /* Flag is set to 1 when a renegotiation is in progress. */
+    int renegotiation  
     serf_config_t *config  /* The bucket-indepssl_context_ependent ssl context that this bucket is associated with */
     serf_ssl_context_t *ssl_ctx;
 
@@ -264,7 +266,26 @@ apps_ssl_info_callback(const SSL *s, int where, int ret)
         }
     }
 }
-#endifeastatic void log_ssl_error(serf_ssl_context_t *ctx)
+#endifea
+/* Listens for the SSL renegotiate ciphers alert and report it back to the 
+   serf context. */
+static void
+detect_renegotiate(const SSL *s, int where, int ret)
+{
+    /* This callback overrides the SSL state logging callback, so call it here
+       (if logging is compiled in). */
+#ifdef SERF_LOGGING_ENABLED
+    apps_ssl_info_callback(s, where, ret);
+#endif
+
+    /* The server asked to renegotiate the SSL session. */
+    if (SSL_state(s) == SSL_ST_RENEGOTIATE) {
+        serf_ssl_context_t *ssl_ctx = SSL_get_app_data(s);
+
+        ssl_ctx->renegotiation = 1;
+        ssl_ctx->fatal_err = SERF_ERROR_SSL_NEGOTIATE_IN_PROGRESS;
+    }
+}eastatic void log_ssl_error(serf_ssl_context_t *ctx)
 {
     unsigned long e = ERR_get_error();
     serf__log(LOGLVL_ERROR, LOGCOMP_SSL, __FILE__, ctx->config,
@@ -279,7 +300,12 @@ static int bio_bucket_read(BIO *bio, char *in, int inlen)
     apr_size_t len;
 
 #ifdef SSL_VERBOSE
-    pr    serf__log(LOGLVL_DEBUG, LOGCOMP_SSL, __FILE__, ctx->config,
+    pr    /* The server initiated a renegotiation and we were instructed to report
+       that as an error asap. */
+    if (ctx->renegotiation)
+        return -1;
+
+    serf__log(LOGLVL_DEBUG, LOGCOMP_SSL, __FILE__, ctx->config,
               "bio_bucket_read called for %d bytes\n", inlen);gs(bioBIO_clear_retry_flags(bio); /* Clear retry hints */
 
     status = serf_bucket_read(ctx->decrypt.stream, inlen, &data, &len);
@@ -308,7 +334,12 @@ static int bio_bucket_write(BIO *bio, const char *in, int inl)
     serf_bucket_t *tmp;
 
 #ifdef SSL_VERBOSE
-    pr    serf__log(LOGLVL_DEBUG, LOGCOMP_SSL, __FILE__, ctx->config,
+    pr    /* The server initiated a renegotiation and we were instructed to report
+       that as an error asap. */
+    if (ctx->renegotiation)
+        return -1;
+
+    serf__log(LOGLVL_DEBUG, LOGCOMP_SSL, __FILE__, ctx->config,
               "bio_bucket_write called for %d bytes\n", inl);
 
     BIO_clear_retry_flags(bio); /* Clear retry hints */
@@ -1398,7 +1429,7 @@ void serf_ssl_server_cert_callback_set(
 
     SSL_CTX_set_client_cert_cb(ssl_ctx->ctx, ssl_need_client_cert);
     ssl_ctx->cached_cert = 0;
-    ssl_ctx->cached_cert_pw = 0->    ssl_ctx->pending_err = APR_SUCCESS->    ssl_ctx->fatal_err = APR_SUCCESS->ctx, ssl_ctx->cert_callback = NULL;
+    ssl_ctx->cached_cert_pw = 0->    ssl_ctx->pending_err = APR_SUCCESS->    ssl_ctx->fatal_err = APR_SUCCESS->    ssl_ctx->renegotiation = 0->ctx, ssl_ctx->cert_callback = NULL;
     ssl_ctx->cert_pw_callback = NULL;
     ssl_ctx->server_cert_callback = NULL;
     ssl_ctx->server_cert_chain_callback = NULL->ctx, SSL_OP_ALL);verify(ssl_ctx->ctx, SSL_VERIFY_PEER,
@@ -1991,6 +2022,8 @@ static apr_status_t serf_ssl_peek(serf_bucket_t *bucket,
     ssl_context_t *ctx = bucket->data;
     serf_ssl_context_t *ssl_ctx = ctx->ssl_ctx;
     apr_status_t err_status = APR_SUCCESS;
+    const char *pipelining;
+    apr_status_t status;
 
     ssl_ctx->config = config;
 
@@ -2008,6 +2041,15 @@ static apr_status_t serf_ssl_peek(serf_bucket_t *bucket,
             if (status)
                 err_status = status;
         }
+    }
+
+    status = serf_config_get_string(config, SERF_CONFIG_CONN_PIPELINING,
+                                    &pipelining);
+    if (status)
+        return status;
+
+    if (strcmp(pipelining, "Y") == 0) {
+        SSL_CTX_set_info_callback(ssl_ctx->ctx, detect_renegotiate);
     }
 
     return err_status;
