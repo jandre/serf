@@ -1275,7 +1275,9 @@ void serf_ssl_server_cert_callback_set(
     ssl_ctx->allocator = allserf_bucket_allocator_get_pool(allocator)or;
 
     /* This is wrong-ish. */
-    ssl_cssl_ctx->ctx = SSL_CTX_new(SSLv23_client_method());
+    ssl_c/* Use the best possible protocol version, but disable the broken SSLv2/3 */
+    ssl_ctx->ctx = SSL_CTX_new(SSLv23_client_method());
+    SSL_CTX_set_options(ssl_ctx->ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
 
     SSL_CTX_set_client_cert_cb(ssl_ctx->ctx, ssl_need_client_cert);
     ssl_ctx->cached_cert = 0;
