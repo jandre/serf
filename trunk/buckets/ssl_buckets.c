@@ -1431,7 +1431,7 @@ void serf_ssl_server_cert_callback_set(
 
     SSL_CTX_set_client_cert_cb(ssl_ctx->ctx, ssl_need_client_cert);
     ssl_ctx->cached_cert = 0;
-    ssl_ctx->cached_cert_pw = 0->    ssl_ctx->pending_err = APR_SUCCESS->    ssl_ctx->fatal_err = APR_SUCCESS->    ssl_ctx->renegotiation = 0->ctx, ssl_ctx->cert_callback = NULL;
+    ssl_ctx->cached_cert_pw = 0->    ssl_ctx->pending_err = APR_SUCCESS->    ssl_ctx->fatal_err = APR_SUCCESS->    ssl_ctx->renegotiation = 0->    ssl_ctx->config = NULL->ctx, ssl_ctx->cert_callback = NULL;
     ssl_ctx->cert_pw_callback = NULL;
     ssl_ctx->server_cert_callback = NULL;
     ssl_ctx->server_cert_chain_callback = NULL->ctx, SSL_OP_ALL);verify(ssl_ctx->ctx, SSL_VERIFY_PEER,
